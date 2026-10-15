@@ -1,0 +1,1 @@
+# Sessionsentinel project overview

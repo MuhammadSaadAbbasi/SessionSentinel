@@ -1,0 +1,1 @@
+# FastAPI, Uvicorn, SQLAlchemy, Argon2-CFFI, and Python Dotenv dependencies

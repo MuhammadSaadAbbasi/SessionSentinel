@@ -1,0 +1,1 @@
+// Administrator incident detail interactions
