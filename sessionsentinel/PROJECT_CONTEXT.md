@@ -7,8 +7,8 @@ SessionSentinel is a small information-security system. It detects suspicious lo
 
 Three parts, one shared backend:
 - **backend/**: FastAPI + SQLite. ALL security logic lives here.
-- **demo-site/**: plain HTML/CSS/JS. Login page, account page, "My Security" page (user side).
-- **admin-panel/**: plain HTML/CSS/JS. Incident list/detail, response buttons, audit log viewer (admin side).
+- **demo-site/**: React (Vite) + JavaScript, React Router. Login page, account page, "My Security" page (user side). Runs on port 5173.
+- **admin-panel/**: React (Vite) + JavaScript, React Router. Incident list/detail, response buttons, audit log viewer (admin side). Runs on port 5174.
 - **attacker/attack.py**: script that simulates brute-force attempts against OUR OWN test accounts only.
 
 The websites only display data and send requests. The backend checks permissions on every request and performs every security action. A button that only changes a label is NOT a security control.
@@ -22,7 +22,9 @@ The websites only display data and send requests. The backend checks permissions
 6. Server-side authorization on every protected endpoint. Never trust the frontend.
 7. Never lock an account permanently. Throttle with waiting times; real users must be able to recover.
 8. Do not claim a feature works unless it is connected to real backend logic and has been run.
-9. Keep it simple: no extra frameworks, no TypeScript, no React. Plain HTML + JS + `fetch`.
+9. Keep it simple: frontends use React (Vite) with plain JavaScript (no TypeScript), `react-router-dom` for pages and the built-in `fetch` for API calls. No other UI libraries or state libraries unless the team agrees.
+10. Frontends call the backend with relative paths like `fetch('/login')`. The Vite dev-server proxy forwards them to the backend on port 8000. Do not hardcode IP addresses or `localhost:8000` in frontend code, and do not add CORS workarounds.
+11. admin-panel React routes must NOT start with `/admin` (it clashes with the proxy). Use `/dashboard`, `/incidents`, `/incidents/5`, `/audit`.
 
 ## 3. Folder structure
 ```
@@ -33,11 +35,23 @@ sessionsentinel/
 │   ├── routers/    auth.py, me.py, admin.py, audit.py
 │   ├── services/   detection.py, agent.py, response.py, audit_log.py, notifier.py
 │   └── tests/      test_rate_limit.py, test_revoked_session.py, test_audit_tamper.py
-├── demo-site/      index.html, account.html, security.html, css/, js/
-└── admin-panel/    login.html, dashboard.html, incidents.html, incident.html, audit.html, css/, js/
+├── demo-site/      (React + Vite)
+│   ├── package.json, vite.config.js, index.html
+│   └── src/  main.jsx, App.jsx (routes), api.js, pages/ (Login, Account, Security), components/
+└── admin-panel/    (React + Vite)
+    ├── package.json, vite.config.js, index.html
+    └── src/  main.jsx, App.jsx (routes), api.js, pages/ (AdminLogin, Dashboard, Incidents, IncidentDetail, AuditLog), components/
 ```
 `routers/` receive requests and call `services/`. Business logic goes in `services/`, not in routers.
-`main.py` also serves the frontends: `/site` -> demo-site, `/admin` -> admin-panel (same origin, so no CORS problems). Run with `uvicorn main:app --host 0.0.0.0 --port 8000`.
+
+How the three parts run (3 terminals):
+| Part | Folder | Command | Port |
+|---|---|---|---|
+| Backend | `backend/` | `uvicorn main:app --host 0.0.0.0 --port 8000` | 8000 |
+| Demo site | `demo-site/` | `npm run dev` | 5173 |
+| Admin panel | `admin-panel/` | `npm run dev` | 5174 |
+
+Both `vite.config.js` files set `server.host: true` (so other devices can open them), their own port, and a proxy that forwards `/login`, `/logout`, `/me`, `/admin`, `/audit` (and `/health`) to `http://localhost:8000`. The backend does not serve the frontends.
 
 ## 4. Database tables (SQLAlchemy, SQLite)
 - **users**: id, email (unique), password_hash, role ("user" or "admin"), created_at
@@ -114,7 +128,7 @@ Do not change this contract without telling the whole team first.
 - Member 1: `demo-site/` and `attacker/`
 - Member 2: `admin-panel/`
 
-Frontends can start with mock JSON that matches section 9, then switch to the real backend.
+Frontends can start with mock JSON that matches section 9, then switch to the real backend by changing only `src/api.js`.
 
 ## 11. How the AI should work with us
 - Do ONE small step at a time. Do not generate the whole project in one answer.
