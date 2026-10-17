@@ -1,6 +1,6 @@
 export async function api(path, options = {}) {
   const token = localStorage.getItem('token')
-  const res = await fetch(path, {
+  return fetch(path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -8,5 +8,4 @@ export async function api(path, options = {}) {
       ...options.headers,
     },
   })
-  return res
 }
