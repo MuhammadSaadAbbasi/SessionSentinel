@@ -19,3 +19,4 @@ SESSION_HOURS = int(os.getenv("SESSION_HOURS", "8"))
 # --- Detection thresholds (Day 3 mein detection.py inhe use karega) ---
 R1_MAX_FAILS = 8            # Rule R1: itne failed logins...
 R1_WINDOW_SECONDS = 120     # ...itne seconds (2 minute) ke andar
+R1_THROTTLE_SECONDS = 15 * 60
