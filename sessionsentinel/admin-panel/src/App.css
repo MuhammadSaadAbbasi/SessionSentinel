@@ -11,6 +11,8 @@ input, select, button { font: inherit; padding: .65rem .8rem; border: 1px solid 
 button, .button { background: #1d4ed8; color: white; border: 0; cursor: pointer; padding: .7rem 1rem; border-radius: 7px; display: inline-block; }
 .link-button { background: transparent; color: #1d4ed8; padding: 0; }
 .error { color: #b91c1c; }
+.success { color: #166534; }
+.actions { display: flex; gap: .75rem; margin: 1rem 0; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 2rem 0; }
 .stats article, .panel { background: white; border: 1px solid #dbe3ef; border-radius: 10px; padding: 1.25rem; }
 .stats span, .stats strong { display: block; }

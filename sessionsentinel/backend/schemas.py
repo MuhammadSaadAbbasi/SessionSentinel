@@ -7,3 +7,18 @@ class LoginRequest(BaseModel):
     email: str
     password: str
     device_id: str      # browser ka random ID (frontend ek baar banata hai, localStorage mein rakhta hai)
+
+
+class IncidentStatusRequest(BaseModel):
+    status: str
+    note: str = ""
+
+
+class UserReportRequest(BaseModel):
+    event_id: int
+    is_me: bool
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    new_password: str

@@ -2,6 +2,7 @@
 # App ka entry point. uvicorn isi file ko chalata hai: uvicorn main:app
 
 from fastapi import FastAPI
+from sqlalchemy import inspect, text
 
 from database import Base, engine
 import models                                      # noqa: F401  (tables register hon, is liye import zaroori)
@@ -9,6 +10,16 @@ from routers import auth, me, admin, audit         # chaaron routers (abhi khali
 
 # Server start hote hi tables bana do agar nahi bane (seed.py bhool jaye to bhi chale)
 Base.metadata.create_all(bind=engine)
+if "users" in inspect(engine).get_table_names():
+    columns = {column["name"] for column in inspect(engine).get_columns("users")}
+    if "password_reset_required" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN password_reset_required "
+                    "BOOLEAN NOT NULL DEFAULT 0"
+                )
+            )
 
 app = FastAPI(title="SessionSentinel")             # asli application object
 

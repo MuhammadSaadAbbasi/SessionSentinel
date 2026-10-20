@@ -41,7 +41,7 @@ function AdminLogin() {
 function Layout({ children }) {
   const navigate = useNavigate()
   return <div className="shell">
-    <header><strong>SessionSentinel</strong><nav><Link to="/dashboard">Dashboard</Link><Link to="/incidents">Incidents</Link><button className="link-button" onClick={() => { localStorage.removeItem('token'); navigate('/') }}>Log out</button></nav></header>
+    <header><strong>SessionSentinel</strong><nav><Link to="/dashboard">Dashboard</Link><Link to="/incidents">Incidents</Link><Link to="/audit">Audit log</Link><button className="link-button" onClick={() => { localStorage.removeItem('token'); navigate('/') }}>Log out</button></nav></header>
     {children}
   </div>
 }
@@ -85,24 +85,56 @@ function IncidentDetail() {
   const { id } = useParams()
   const [incident, setIncident] = useState(null)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   useEffect(() => {
     api(`/admin/incidents/${id}`).then(async (response) => {
       if (!response.ok) throw new Error('Incident not found')
       setIncident(await response.json())
     }).catch((reason) => setError(reason.message))
   }, [id])
+  async function updateStatus(status) {
+    const response = await api(`/admin/incidents/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status, note: 'Updated from admin panel' }),
+    })
+    if (!response.ok) {
+      setError('Could not update incident status')
+      return
+    }
+    setMessage(`Incident marked ${status}.`)
+    setIncident({ ...incident, status })
+  }
   return <Layout><main><Link to="/incidents">Back to incidents</Link>{error && <p className="error">{error}</p>}{!incident && !error && <p>Loading incident...</p>}{incident && <>
     <div className="title-row"><h1>Incident #{incident.id}</h1><span className={`badge ${incident.risk_level}`}>{incident.risk_level} priority</span></div>
     <p>Account: <strong>{incident.email || 'Unknown'}</strong></p>
+    {message && <p className="success">{message}</p>}
+    <div className="actions"><button onClick={() => updateStatus('investigating')}>Investigate</button><button onClick={() => updateStatus('resolved')}>Resolve</button></div>
     <section className="panel"><h2>Explanation</h2><pre>{incident.explanation}</pre></section>
     <section className="panel"><h2>Evidence</h2><ul>{incident.evidence.map((item) => <li key={item}>{item}</li>)}</ul><p><strong>Recommended:</strong> {incident.recommended_action}</p></section>
     <section className="panel"><h2>Timeline</h2><ol className="timeline">{incident.timeline.map((event) => <li key={event.id}><strong>{event.type}</strong><span>{new Date(event.created_at).toLocaleString()}</span><small>{event.device_id}{event.ip ? ` · ${event.ip}` : ''}</small></li>)}</ol></section>
   </>}</main></Layout>
 }
 
+function AuditLog() {
+  const [entries, setEntries] = useState([])
+  const [verification, setVerification] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api('/audit').then(async (response) => {
+      if (!response.ok) throw new Error('Could not load audit log')
+      setEntries(await response.json())
+    }).catch((reason) => setError(reason.message))
+  }, [])
+  async function verifyAudit() {
+    const response = await api('/audit/verify')
+    setVerification(await response.json())
+  }
+  return <Layout><main><h1>Audit log</h1>{error && <p className="error">{error}</p>}<button onClick={verifyAudit}>Verify integrity</button>{verification && <p className={verification.status === 'valid' ? 'success' : 'error'}>{verification.status === 'valid' ? 'Audit chain is valid.' : `Broken entry: ${verification.entry_id}`}</p>}<div className="audit-list">{entries.map((entry) => <article className="panel" key={entry.id}><strong>{entry.action}</strong><span>{entry.actor} · {new Date(entry.created_at).toLocaleString()}</span><p>{entry.details}</p></article>)}</div></main></Layout>
+}
+
 function ProtectedRoutes() {
   if (!localStorage.getItem('token')) return <Navigate to="/" replace />
-  return <Routes><Route path="/dashboard" element={<Dashboard />} /><Route path="/incidents" element={<Incidents />} /><Route path="/incidents/:id" element={<IncidentDetail />} /><Route path="*" element={<Navigate to="/dashboard" replace />} /></Routes>
+  return <Routes><Route path="/dashboard" element={<Dashboard />} /><Route path="/incidents" element={<Incidents />} /><Route path="/incidents/:id" element={<IncidentDetail />} /><Route path="/audit" element={<AuditLog />} /><Route path="*" element={<Navigate to="/dashboard" replace />} /></Routes>
 }
 
 export default function App() {

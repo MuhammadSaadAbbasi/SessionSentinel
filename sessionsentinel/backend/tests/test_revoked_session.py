@@ -27,3 +27,24 @@ def test_expired_token_rejected(client, login):
     db.query(UserSession).filter(UserSession.token == t).update({"created_at": utcnow() - timedelta(hours=24)})
     db.commit(); db.close()
     assert client.get("/me", headers=auth(t)).status_code == 401
+
+
+def test_user_reports_unauthorized_event_and_revokes_sessions(client, login):
+    first = login(email="sara@test.com", device="sara-device")
+    token = first.json()["token"]
+    event_id = client.get("/me/activity", headers=auth(token)).json()[0]["id"]
+    assert client.post(
+        "/me/report",
+        headers=auth(token),
+        json={"event_id": event_id, "is_me": False},
+    ).status_code == 200
+    assert client.get("/me/activity", headers=auth(token)).status_code == 401
+    assert client.post(
+        "/reset-password",
+        json={"email": "sara@test.com", "new_password": "NewTest@12345"},
+    ).status_code == 200
+    assert login(email="sara@test.com", password="NewTest@12345").status_code == 200
+    assert client.post(
+        "/reset-password",
+        json={"email": "sara@test.com", "new_password": "Test@12345"},
+    ).status_code == 200

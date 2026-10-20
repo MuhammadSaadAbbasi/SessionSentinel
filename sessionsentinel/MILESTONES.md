@@ -138,6 +138,22 @@ Maqsad: asli corrective action aur tamper-proof record.
 | Member 3 | Metrics (kitne attempts par kya hua, response time), tamper test ka saboot |
 | Teeno | **Demo 2 baar rehearse**, backup: screenshots ya screen recording |
 
+**Completed package:**
+- `PRESENTATION.md` contains the architecture, security flow, CIA mapping,
+  design choices, limitations, and validation results.
+- `DEMO_RUNBOOK.md` contains reproducible startup and five-minute demo steps.
+
+### M7: Final release readiness
+
+The original seven-day plan ends at M6. M7 is the final documentation and
+release-readiness checkpoint added for this project:
+
+- all backend tests pass;
+- both frontends build and lint;
+- the end-to-end demo flow is documented;
+- limitations and safe test boundaries are documented;
+- no real accounts, third-party targets, or committed secrets are used.
+
 ---
 
 ## 4. Demo script (5 minute)

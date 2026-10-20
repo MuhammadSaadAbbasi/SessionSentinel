@@ -26,6 +26,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)  # unique: do users ki same email nahi
     password_hash: Mapped[str] = mapped_column(String(255))   # password KABHI plain save nahi hota, sirf Argon2 hash
     role: Mapped[str] = mapped_column(String(20), default="user")  # "user" ya "admin" (RBAC isi se chalega)
+    password_reset_required: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

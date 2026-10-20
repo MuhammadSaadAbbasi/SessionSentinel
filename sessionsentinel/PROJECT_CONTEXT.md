@@ -113,6 +113,7 @@ Auth header: `Authorization: Bearer <token>`. Errors: 401 invalid or revoked tok
 | GET /me/activity | | own recent events |
 | GET /me/sessions | | own active sessions |
 | POST /me/report | event_id, is_me | ok |
+| POST /reset-password | email, new_password | ok |
 | GET /admin/incidents | filters: severity, status | incident list |
 | GET /admin/incidents/{id} | | timeline, evidence, explanation, actions taken |
 | POST /admin/sessions/{id}/revoke | | ok |

@@ -16,6 +16,7 @@ function Login() {
   const [email, setEmail] = useState('ali@test.com')
   const [password, setPassword] = useState('Test@12345')
   const [error, setError] = useState('')
+  const [resetMode, setResetMode] = useState(false)
 
   async function submit(event) {
     event.preventDefault()
@@ -37,14 +38,31 @@ function Login() {
     navigate('/account')
   }
 
+  async function resetPassword(event) {
+    event.preventDefault()
+    setError('')
+    const response = await api('/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, new_password: password }),
+    })
+    if (!response.ok) {
+      const body = await response.json()
+      setError(body.detail || 'Could not reset password')
+      return
+    }
+    setResetMode(false)
+    setError('Password reset. Sign in with the new password.')
+  }
+
   return <main className="auth-card">
     <h1>SessionSentinel</h1>
     <p>Secure account access for the demo site.</p>
-    <form onSubmit={submit}>
+    <form onSubmit={resetMode ? resetPassword : submit}>
       <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
       <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-      <button type="submit">Sign in</button>
+      <button type="submit">{resetMode ? 'Reset password' : 'Sign in'}</button>
     </form>
+    <button className="link-button" onClick={() => setResetMode(!resetMode)}>{resetMode ? 'Back to sign in' : 'Reset password'}</button>
     {error && <p className="error" role="alert">{error}</p>}
   </main>
 }
@@ -72,6 +90,7 @@ function Security() {
   const [activity, setActivity] = useState([])
   const [sessions, setSessions] = useState([])
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   useEffect(() => {
     Promise.all([api('/me/activity'), api('/me/sessions')])
       .then(async ([activityResponse, sessionsResponse]) => {
@@ -81,9 +100,20 @@ function Security() {
       })
       .catch((reason) => setError(reason.message))
   }, [])
-  return <Layout><main><h1>My Security</h1>{error && <p className="error">{error}</p>}
+  async function report(eventId, isMe) {
+    const response = await api('/me/report', { method: 'POST', body: JSON.stringify({ event_id: eventId, is_me: isMe }) })
+    if (response.ok) {
+      if (isMe) {
+        setMessage('Device trusted and activity confirmed.')
+      } else {
+        setMessage('Your sessions were revoked. Please reset your password and sign in again.')
+        localStorage.removeItem('token')
+      }
+    } else setError('Could not report this activity')
+  }
+  return <Layout><main><h1>My Security</h1>{error && <p className="error">{error}</p>}{message && <p className="success">{message}</p>}
     <section className="panel"><h2>Active sessions</h2>{sessions.length === 0 ? <p>No active sessions.</p> : <ul className="session-list">{sessions.map((session) => <li key={session.id}><strong>{session.device_id}</strong><span>{session.current ? 'Current device' : 'Active'} · {new Date(session.created_at).toLocaleString()}</span></li>)}</ul>}</section>
-    <section className="panel"><h2>Recent activity</h2>{activity.length === 0 ? <p>No recent activity.</p> : <ul className="activity-list">{activity.map((event) => <li key={event.id} className={event.type === 'new_device' ? 'new-device' : ''}><div><strong>{event.type === 'new_device' ? 'New device detected' : event.type.replaceAll('_', ' ')}</strong><span>{new Date(event.created_at).toLocaleString()}</span></div>{event.type === 'new_device' && <span className="warning">Review this login</span>}</li>)}</ul>}</section>
+    <section className="panel"><h2>Recent activity</h2>{activity.length === 0 ? <p>No recent activity.</p> : <ul className="activity-list">{activity.map((event) => <li key={event.id} className={event.type === 'new_device' ? 'new-device' : ''}><div><strong>{event.type === 'new_device' ? 'New device detected' : event.type.replaceAll('_', ' ')}</strong><span>{new Date(event.created_at).toLocaleString()}</span></div>{event.type === 'new_device' && <div className="report-actions"><button className="confirm-button" onClick={() => report(event.id, true)}>This was me</button><button className="report-button" onClick={() => report(event.id, false)}>This wasn't me</button></div>}</li>)}</ul>}</section>
   </main></Layout>
 }
 

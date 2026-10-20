@@ -1,11 +1,15 @@
 # routers/me.py
 # Logged-in user ki apni information. Har query user_id se filter hoti hai (doosre ka data nahi dikhta).
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
 from deps import get_current_session, get_current_user
-from models import Event, User, UserSession
+from models import Event, Incident, TrustedDevice, User, UserSession
+from schemas import UserReportRequest
+from services.response import revoke_all_sessions
+from services.audit_log import append
+from services.notifier import notify
 
 router = APIRouter()
 
@@ -34,3 +38,43 @@ def sessions(user: User = Depends(get_current_user), cur: UserSession = Depends(
             .order_by(UserSession.created_at.desc()).all())
     return [{"id": s.id, "device_id": s.device_id, "created_at": _iso(s.created_at),
              "current": s.id == cur.id} for s in rows]
+
+
+@router.post("/me/report")
+def report(
+    body: UserReportRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(Event).filter(Event.id == body.event_id, Event.user_id == user.id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if not body.is_me:
+        user.password_reset_required = True
+        revoke_all_sessions(db, user.id, user.email)
+        incident = Incident(
+            user_id=user.id,
+            severity="high",
+            status="open",
+            explanation=f"User reported event {event.id} as unauthorized",
+        )
+        db.add(incident)
+        append(db, "unauthorized_activity_reported", user.email, f"event_id={event.id}")
+        notify("Unauthorized activity reported", f"user={user.email};event_id={event.id}")
+    else:
+        device = db.query(TrustedDevice).filter(
+            TrustedDevice.user_id == user.id,
+            TrustedDevice.device_id == event.device_id,
+        ).first()
+        if device is None:
+            db.add(TrustedDevice(user_id=user.id, device_id=event.device_id))
+        incident = db.query(Incident).filter(
+            Incident.user_id == user.id,
+            Incident.status == "open",
+            Incident.explanation.like("%new device%"),
+        ).order_by(Incident.id.desc()).first()
+        if incident:
+            incident.status = "resolved"
+        append(db, "activity_confirmed", user.email, f"event_id={event.id};device_id={event.device_id}")
+    db.commit()
+    return {"status": "ok"}

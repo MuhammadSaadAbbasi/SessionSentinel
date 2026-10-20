@@ -1,6 +1,6 @@
 export async function api(path, options = {}) {
   const token = localStorage.getItem('token')
-  return fetch(path, {
+  const response = await fetch(path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -8,4 +8,9 @@ export async function api(path, options = {}) {
       ...options.headers,
     },
   })
+  if (response.status === 401 && token) {
+    localStorage.removeItem('token')
+    window.location.assign('/')
+  }
+  return response
 }

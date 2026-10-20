@@ -11,6 +11,7 @@ input, button { font: inherit; padding: .65rem .8rem; border: 1px solid #cbd5e1;
 button, .button { background: #1d4ed8; color: white; border: 0; cursor: pointer; padding: .7rem 1rem; border-radius: 7px; display: inline-block; margin-top: 1.5rem; }
 .link-button { background: transparent; color: #1d4ed8; padding: 0; margin: 0; }
 .error { color: #b91c1c; margin-top: 1rem; }
+.success { color: #166534; margin-top: 1rem; }
 .panel { background: white; border: 1px solid #dbe3ef; border-radius: 10px; padding: 1.25rem; margin: 1rem 0; }
 .panel h2 { margin-top: 0; color: #0f172a; }
 .session-list, .activity-list { list-style: none; padding: 0; margin: 0; }
@@ -20,4 +21,7 @@ button, .button { background: #1d4ed8; color: white; border: 0; cursor: pointer;
 .activity-list li > div { display: flex; gap: 1rem; }
 .new-device { background: #fff7ed; padding: .8rem; border-radius: 6px; }
 .warning { color: #b45309 !important; font-weight: 600; }
+.report-button { margin: 0; background: #b91c1c; padding: .45rem .7rem; }
+.confirm-button { margin: 0; background: #166534; padding: .45rem .7rem; }
+.report-actions { display: flex; gap: .5rem; }
 @media (max-width: 700px) { header { display: block; } nav { margin-top: 1rem; }.session-list li, .activity-list li { display: block; }.activity-list li > div { display: block; } }
