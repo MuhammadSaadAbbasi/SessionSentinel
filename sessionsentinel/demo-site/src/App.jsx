@@ -11,6 +11,16 @@ function deviceId() {
   return value
 }
 
+function PasswordField({ value, onChange }) {
+  const [visible, setVisible] = useState(false)
+  return <div className="password-field">
+    <input type={visible ? 'text' : 'password'} value={value} onChange={onChange} />
+    <button type="button" className="password-toggle" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>
+      {visible ? 'Hide' : 'Show'}
+    </button>
+  </div>
+}
+
 function Login() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('ali@test.com')
@@ -59,7 +69,7 @@ function Login() {
     <p>Secure account access for the demo site.</p>
     <form onSubmit={resetMode ? resetPassword : submit}>
       <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-      <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+      <label>Password<PasswordField value={password} onChange={(event) => setPassword(event.target.value)} /></label>
       <button type="submit">{resetMode ? 'Reset password' : 'Sign in'}</button>
     </form>
     <button className="link-button" onClick={() => setResetMode(!resetMode)}>{resetMode ? 'Back to sign in' : 'Reset password'}</button>

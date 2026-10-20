@@ -8,6 +8,9 @@ h1 { color: #0f172a; }
 form { display: grid; gap: 1rem; margin-top: 1.5rem; }
 label { display: grid; gap: .35rem; color: #475569; }
 input, button { font: inherit; padding: .65rem .8rem; border: 1px solid #cbd5e1; border-radius: 7px; }
+.password-field { position: relative; display: flex; align-items: center; }
+.password-field input { width: 100%; padding-right: 4rem; }
+.password-toggle { position: absolute; right: .35rem; padding: .35rem .45rem; margin: 0; background: transparent; color: #1d4ed8; font-size: .75rem; font-weight: 700; }
 button, .button { background: #1d4ed8; color: white; border: 0; cursor: pointer; padding: .7rem 1rem; border-radius: 7px; display: inline-block; margin-top: 1.5rem; }
 .link-button { background: transparent; color: #1d4ed8; padding: 0; margin: 0; }
 .error { color: #b91c1c; margin-top: 1rem; }

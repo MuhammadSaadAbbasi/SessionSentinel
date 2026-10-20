@@ -1,0 +1,174 @@
+"""Bounded SMTP delivery and security-email templates."""
+
+import hashlib
+import secrets
+import smtplib
+from datetime import timedelta
+from email.message import EmailMessage
+from urllib.parse import quote
+
+from config import (
+    ADMIN_EMAIL,
+    APP_BASE_URL,
+    SMTP_EMAIL,
+    SMTP_HOST,
+    SMTP_PASSWORD,
+    SMTP_PORT,
+    SMTP_TIMEOUT_SECONDS,
+    VERIFICATION_TTL_SECONDS,
+)
+from models import Notification, User, VerificationRequest, utcnow
+
+
+class EmailConfigurationError(RuntimeError):
+    pass
+
+
+class EmailDeliveryError(RuntimeError):
+    pass
+
+
+def _smtp_configured() -> bool:
+    return all((SMTP_HOST, SMTP_EMAIL, SMTP_PASSWORD, SMTP_PORT))
+
+
+def send_email(recipient: str, subject: str, body: str) -> None:
+    if not _smtp_configured():
+        raise EmailConfigurationError(
+            "SMTP is not configured; set SMTP_HOST, SMTP_EMAIL, SMTP_PASSWORD, and SMTP_PORT"
+        )
+    if "@" not in recipient or recipient.count("@") != 1:
+        raise EmailDeliveryError("Invalid notification recipient")
+    message = EmailMessage()
+    message["From"] = SMTP_EMAIL
+    message["To"] = recipient
+    message["Subject"] = subject
+    message.set_content(body)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(SMTP_EMAIL, SMTP_PASSWORD)
+            smtp.send_message(message)
+    except (OSError, smtplib.SMTPException) as exc:
+        raise EmailDeliveryError(f"SMTP delivery failed: {type(exc).__name__}") from exc
+
+
+def create_notification(
+    db,
+    *,
+    recipient: str,
+    kind: str,
+    subject: str,
+    body: str,
+    idempotency_key: str,
+    user_id: int | None = None,
+    incident_id: int | None = None,
+) -> Notification:
+    existing = db.query(Notification).filter(
+        Notification.idempotency_key == idempotency_key
+    ).first()
+    if existing is not None:
+        return existing
+    notification = Notification(
+        user_id=user_id,
+        incident_id=incident_id,
+        recipient=recipient,
+        kind=kind,
+        subject=subject,
+        body=body,
+        idempotency_key=idempotency_key,
+        status="pending",
+    )
+    db.add(notification)
+    db.flush()
+    try:
+        send_email(recipient, subject, body)
+    except (EmailConfigurationError, EmailDeliveryError) as exc:
+        notification.status = "failed"
+        notification.last_error = str(exc)
+    else:
+        notification.status = "sent"
+        notification.sent_at = utcnow()
+    notification.attempts += 1
+    return notification
+
+
+def retry_notification(db, notification: Notification) -> Notification:
+    if notification.status == "sent":
+        return notification
+    try:
+        send_email(notification.recipient, notification.subject, notification.body)
+    except (EmailConfigurationError, EmailDeliveryError) as exc:
+        notification.status = "failed"
+        notification.last_error = str(exc)
+    else:
+        notification.status = "sent"
+        notification.last_error = None
+        notification.sent_at = utcnow()
+    notification.attempts += 1
+    return notification
+def failed_login_body(user: User, count: int, severity: str) -> str:
+    return (
+        "SessionSentinel Security Alert\n\n"
+        "Event: Repeated failed login attempts\n"
+        f"Account: {user.email}\n"
+        f"Detected: {utcnow().isoformat()}Z\n"
+        f"Attempts in the configured window: {count}\n"
+        f"Severity: {severity}\n\n"
+        "If this activity was not yours, reset your password and review active sessions."
+    )
+
+
+def critical_login_body(user: User, count: int) -> str:
+    return (
+        "SessionSentinel Critical Security Alert\n\n"
+        "Event: Critical repeated login activity\n"
+        f"Account: {user.email}\n"
+        f"Detected: {utcnow().isoformat()}Z\n"
+        f"Attempts in the configured window: {count}\n\n"
+        "A temporary account restriction is active. If this was not you, secure your "
+        "account and contact an administrator."
+    )
+
+
+def unusual_location_body(user: User, ip: str | None) -> str:
+    return (
+        "SessionSentinel Security Alert\n\n"
+        "Event: Login from an unusual location\n"
+        f"Account: {user.email}\n"
+        f"Detected: {utcnow().isoformat()}Z\n"
+        f"Network address: {ip or ' unavailable'}\n\n"
+        "Review this activity. A network address alone does not prove compromise; "
+        "secure your account if you do not recognize the sign-in."
+    )
+
+
+def create_verification_request(db, user: User, device_id: str, ip: str | None):
+    raw_token = secrets.token_urlsafe(32)
+    request = VerificationRequest(
+        user_id=user.id,
+        device_id=device_id,
+        ip=ip,
+        token_hash=hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+        expires_at=utcnow() + timedelta(seconds=VERIFICATION_TTL_SECONDS),
+    )
+    db.add(request)
+    db.flush()
+    link = f"{APP_BASE_URL.rstrip('/')}/verify-device?token={quote(raw_token)}"
+    body = (
+        "SessionSentinel Security Verification\n\n"
+        "Event: New device sign-in verification\n"
+        f"Account: {user.email}\n"
+        f"Detected: {utcnow().isoformat()}Z\n"
+        f"Device: {device_id}\n\n"
+        f"Verify this device using the following link (valid for {VERIFICATION_TTL_SECONDS // 60} minutes):\n"
+        f"{link}\n\n"
+        "If you did not initiate this sign-in, do not use the link and secure your account."
+    )
+    return request, raw_token, body
+
+
+def admin_recipient() -> str | None:
+    return ADMIN_EMAIL or None

@@ -1,5 +1,5 @@
 from database import SessionLocal
-from models import Event, Incident
+from models import Event, Incident, User
 from tests.conftest import auth
 
 
@@ -67,6 +67,24 @@ def test_success_after_r1_is_recorded(client, login):
 
 
 def test_admin_response_and_audit_endpoints(client, login):
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == "zara@test.com").one()
+    for _ in range(5):
+        db.add(Event(
+            user_id=user.id,
+            email_tried=user.email,
+            device_id="admin-response",
+            ip="203.0.113.50",
+            type="login_fail",
+        ))
+    db.add(Incident(
+        user_id=user.id,
+        severity="high",
+        status="open",
+        explanation="R1: test incident",
+    ))
+    db.commit()
+    db.close()
     user_token = login(email="zara@test.com", device="zara-response").json()["token"]
     session_id = client.get(
         "/me/sessions", headers=auth(user_token)

@@ -9,16 +9,16 @@ from fastapi.testclient import TestClient
 import seed
 from database import Base, engine
 from main import app
+import services.email_service as email_service
 
 
-@pytest.fixture(scope="session", autouse=True)
-def fresh_db():
+@pytest.fixture(autouse=True)
+def fresh_db(monkeypatch):
     Base.metadata.drop_all(bind=engine)
+    monkeypatch.setattr(email_service, "send_email", lambda recipient, subject, body: None)
     seed.main()                       # 6 test users
     yield
-    engine.dispose()
-    if os.path.exists("test_sessionsentinel.db"):
-        os.remove("test_sessionsentinel.db")
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture()

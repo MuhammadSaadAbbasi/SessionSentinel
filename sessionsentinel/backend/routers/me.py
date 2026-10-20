@@ -9,7 +9,7 @@ from models import Event, Incident, TrustedDevice, User, UserSession
 from schemas import UserReportRequest
 from services.response import revoke_all_sessions
 from services.audit_log import append
-from services.notifier import notify
+from services.email_service import create_notification
 
 router = APIRouter()
 
@@ -60,7 +60,23 @@ def report(
         )
         db.add(incident)
         append(db, "unauthorized_activity_reported", user.email, f"event_id={event.id}")
-        notify("Unauthorized activity reported", f"user={user.email};event_id={event.id}")
+        create_notification(
+            db,
+            recipient=user.email,
+            user_id=user.id,
+            incident_id=incident.id,
+            kind="unauthorized_activity",
+            subject="SessionSentinel: Account Protection Activated",
+            body=(
+                "SessionSentinel Account Protection\n\n"
+                "Event: Unauthorized activity reported\n"
+                f"Account: {user.email}\n"
+                f"Detected: {_iso(event.created_at)}\n\n"
+                "All active sessions were revoked and a password reset is required. "
+                "If you need help, contact your administrator."
+            ),
+            idempotency_key=f"unauthorized:{user.id}:{event.id}",
+        )
     else:
         device = db.query(TrustedDevice).filter(
             TrustedDevice.user_id == user.id,

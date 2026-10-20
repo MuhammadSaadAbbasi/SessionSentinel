@@ -16,6 +16,8 @@ TEST_USERS = [
     ("ahmed@test.com", "Test@12345",  "user"),
     ("bilal@test.com", "Test@12345",  "user"),
     ("zara@test.com",  "Test@12345",  "user"),
+    ("saadrehan315@gmail.com",  "Test@12345",  "user"),
+ 
 ]
 
 

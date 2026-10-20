@@ -1,12 +1,50 @@
 # Sessionsentinel project overview
 
-## Implemented through M7
+## Implemented detection rules R1-R6
+
+## SMTP security notifications
+
+Security notifications are persisted in the backend `notifications` table and delivered
+through bounded SMTP STARTTLS connections. A provider outage does not undo a recorded
+event or bypass rate limiting: the notification is marked `failed` and an administrator
+can retry it from the incident detail screen.
+
+Copy `backend/.env.example` to `backend/.env` and fill in the SMTP values. The real
+`.env` file is ignored by Git.
+
+For Gmail:
+
+1. Enable two-step verification on the sender Google account.
+2. Open **Google Account → Security → 2-Step Verification → App passwords**.
+3. Create an app password for SessionSentinel and put the generated 16-character value
+   in `SMTP_PASSWORD`; do not use the normal Google password.
+4. Set `SMTP_EMAIL` to the sender account and `ADMIN_EMAIL` to the administrator inbox.
+
+Start the backend from the repository's `sessionsentinel/backend` directory so the
+configured database and environment are used:
+
+```powershell
+copy .env.example .env
+python -m pip install -r requirements.txt
+python seed.py
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Verification emails contain a time-limited, single-use link. The device is not added
+to `trusted_devices` until `/verify-device` succeeds. IP-level rate limiting never
+revokes existing session tokens.
 
 ### Detection and investigation
 
-- Login failures are counted per account in a configurable two-minute window.
-- The eighth failure returns `429` with `retry_after` and creates a medium incident.
-- Successful logins after an R1 sequence and unfamiliar devices are included in the investigation evidence.
+- Login failures are counted per account in a configurable window: five failures create a
+  high-severity incident and ten failures escalate it to critical with temporary account locking.
+- R1 incidents are updated rather than duplicated; R2 correlates later successful logins
+  with the active failure sequence.
+- Unfamiliar devices and previously unseen login IPs create R3 incidents. R4 holds a
+  session when either follows an R1 sequence.
+- R5 unauthorized reports revoke all sessions, require a password reset, and send a local alert.
+- R6 identifies suspicious activity across more than three accounts sharing an IP,
+  records affected accounts and timestamps, and applies IP-level rate limiting.
 - Admins can view filtered incidents and an incident detail timeline at `/admin/incidents`.
 
 ### Response and audit controls
@@ -16,7 +54,8 @@
 - Users can report an event through `/me/report` with `is_me: false`; all active sessions are revoked and a high-severity incident is created.
 - Users can confirm an event with `is_me: true`; the device is trusted and the related open new-device incident is resolved.
 - Unauthorized reports require a password reset through `POST /reset-password`; changing the password revokes all existing sessions.
-- R1 throttles are audited, and R1 plus a successful new-device login becomes a high-risk held session.
+- R1 escalation and account locks are audited, and R1 plus a successful new-device or unusual-location
+  login becomes a high-risk held session.
 - Security actions append entries to the SHA-256 hash-chained `audit_log` table.
 - Unauthorized reports print a visible console alert through the local notifier adapter.
 - Admins can list the audit log at `/audit` and verify its integrity at `/audit/verify`.
@@ -51,7 +90,8 @@ Use the admin panel at `http://localhost:5174`, open an incident, change its sta
 
 M5 adds regression coverage for the complete security flow:
 
-- Brute-force R1: seven failures return `401`, the threshold attempt returns `429`, and `retry_after` is present.
+- Brute-force R1: five failures create a high incident, ten failures escalate it to critical,
+  and the account lock returns `429` with `retry_after`.
 - Account isolation: an attack against one account does not block another account.
 - R2: a successful login after an R1 sequence is investigated.
 - R3: a successful login from a new device creates a `new_device` event and incident.
@@ -76,7 +116,7 @@ npm.cmd run build
 npm.cmd run lint
 ```
 
-The M5/M6 regression suite currently passes with 16 backend tests.
+The backend regression suite includes the legacy M5/M6 scenarios plus focused R1/R6 rule tests.
 
 ## M6 presentation and M7 release package
 

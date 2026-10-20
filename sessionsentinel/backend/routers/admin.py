@@ -6,16 +6,20 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from deps import require_admin
-from models import Incident, User, UserSession
+from models import Incident, Notification, User, UserSession
 from schemas import IncidentStatusRequest
 from services.agent import investigate
 from services.response import revoke_session, update_incident_status
+from services.email_service import retry_notification
 
 router = APIRouter()
 
 
 def _summary(db: Session, incident: Incident) -> dict:
     user = db.get(User, incident.user_id) if incident.user_id else None
+    notifications = db.query(Notification).filter(
+        Notification.incident_id == incident.id
+    ).all()
     return {
         "id": incident.id,
         "user_id": incident.user_id,
@@ -24,6 +28,17 @@ def _summary(db: Session, incident: Incident) -> dict:
         "status": incident.status,
         "explanation": incident.explanation,
         "created_at": incident.created_at.isoformat() + "Z",
+        "notification_status": [
+            {
+                "id": item.id,
+                "kind": item.kind,
+                "status": item.status,
+                "attempts": item.attempts,
+                "last_error": item.last_error,
+                "created_at": item.created_at.isoformat() + "Z",
+            }
+            for item in notifications
+        ],
     }
 
 
@@ -88,3 +103,43 @@ def set_status(
     update_incident_status(db, incident, body.status, admin.email, body.note)
     db.commit()
     return {"status": "ok"}
+
+
+@router.get("/admin/notifications")
+def list_notifications(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    notifications = db.query(Notification).order_by(Notification.created_at.desc()).limit(200).all()
+    return [
+        {
+            "id": item.id,
+            "incident_id": item.incident_id,
+            "recipient": item.recipient,
+            "kind": item.kind,
+            "status": item.status,
+            "attempts": item.attempts,
+            "last_error": item.last_error,
+            "created_at": item.created_at.isoformat() + "Z",
+            "sent_at": item.sent_at.isoformat() + "Z" if item.sent_at else None,
+        }
+        for item in notifications
+    ]
+
+
+@router.post("/admin/notifications/{notification_id}/retry")
+def retry_email(
+    notification_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    notification = db.get(Notification, notification_id)
+    if notification is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    retry_notification(db, notification)
+    append_details = f"notification_id={notification.id};status={notification.status}"
+    from services.audit_log import append
+
+    append(db, "notification_retry", admin.email, append_details)
+    db.commit()
+    return {"status": notification.status, "attempts": notification.attempts}

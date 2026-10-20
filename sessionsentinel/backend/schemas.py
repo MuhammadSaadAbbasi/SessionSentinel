@@ -22,3 +22,7 @@ class UserReportRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     email: str
     new_password: str
+
+
+class VerificationRequestBody(BaseModel):
+    token: str

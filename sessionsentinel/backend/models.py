@@ -79,10 +79,41 @@ class Incident(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    severity: Mapped[str] = mapped_column(String(10))                 # "low", "medium", "high"
+    severity: Mapped[str] = mapped_column(String(10))                 # "low", "medium", "high", "critical"
     status: Mapped[str] = mapped_column(String(20), default="open")   # open, investigating, contained, resolved, false_positive
     explanation: Mapped[str] = mapped_column(Text, default="")        # agent ki likhi wajah (Day 4)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    incident_id: Mapped[Optional[int]] = mapped_column(ForeignKey("incidents.id"), nullable=True, index=True)
+    recipient: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(60))
+    subject: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    attempts: Mapped[int] = mapped_column(default=0)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class VerificationRequest(Base):
+    __tablename__ = "verification_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    device_id: Mapped[str] = mapped_column(String(100))
+    ip: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 # ---------------------------------------------------------------- audit_log
