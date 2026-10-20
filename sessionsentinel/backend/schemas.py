@@ -9,6 +9,15 @@ class LoginRequest(BaseModel):
     device_id: str      # browser ka random ID (frontend ek baar banata hai, localStorage mein rakhta hai)
 
 
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenRequest(BaseModel):
+    token: str
+
+
 class IncidentStatusRequest(BaseModel):
     status: str
     note: str = ""

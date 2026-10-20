@@ -26,14 +26,17 @@ function Login() {
   const [email, setEmail] = useState('ali@test.com')
   const [password, setPassword] = useState('Test@12345')
   const [error, setError] = useState('')
-  const [resetMode, setResetMode] = useState(false)
+  const [mode, setMode] = useState('login')
 
   async function submit(event) {
     event.preventDefault()
     setError('')
-    const response = await api('/login', {
+    const path = mode === 'signup' ? '/signup' : '/login'
+    const response = await api(path, {
       method: 'POST',
-      body: JSON.stringify({ email, password, device_id: deviceId() }),
+      body: JSON.stringify(mode === 'signup'
+        ? { email, password }
+        : { email, password, device_id: deviceId() }),
     })
     const body = await response.json()
     if (response.status === 429) {
@@ -42,6 +45,11 @@ function Login() {
     }
     if (!response.ok) {
       setError(body.detail || 'Invalid email or password')
+      return
+    }
+    if (mode === 'signup') {
+      setError('Account created. Check your email to verify it before signing in.')
+      setMode('login')
       return
     }
     localStorage.setItem('token', body.token)
@@ -60,21 +68,48 @@ function Login() {
       setError(body.detail || 'Could not reset password')
       return
     }
-    setResetMode(false)
+    setMode('login')
     setError('Password reset. Sign in with the new password.')
   }
 
+  const resetMode = mode === 'reset'
   return <main className="auth-card">
     <h1>SessionSentinel</h1>
     <p>Secure account access for the demo site.</p>
     <form onSubmit={resetMode ? resetPassword : submit}>
       <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} /></label>
       <label>Password<PasswordField value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-      <button type="submit">{resetMode ? 'Reset password' : 'Sign in'}</button>
+      <button type="submit">{resetMode ? 'Reset password' : mode === 'signup' ? 'Create account' : 'Sign in'}</button>
     </form>
-    <button className="link-button" onClick={() => setResetMode(!resetMode)}>{resetMode ? 'Back to sign in' : 'Reset password'}</button>
+      <button className="link-button" onClick={() => setMode(resetMode ? 'login' : 'reset')}>{resetMode ? 'Back to sign in' : 'Reset password'}</button>
+      {!resetMode && <button className="link-button" onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')}>{mode === 'signup' ? 'Back to sign in' : 'Create an account'}</button>}
     {error && <p className="error" role="alert">{error}</p>}
   </main>
+}
+
+function EmailAction({ action }) {
+  const [message, setMessage] = useState('Processing link...')
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    window.history.replaceState({}, document.title, window.location.pathname)
+    if (!token) {
+      setMessage('This link is missing its security token.')
+      return
+    }
+    api(action, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }).then(async (response) => {
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.detail || 'This link is invalid or expired.')
+      setMessage(action === '/verify-email'
+        ? 'Email verified. You can now sign in.'
+        : action === '/verify-device'
+          ? 'Device verified. You can now sign in.'
+          : 'The sign-in session has been cancelled.')
+    }).catch((reason) => setMessage(reason.message))
+  }, [action])
+  return <main className="auth-card"><h1>SessionSentinel</h1><p>{message}</p><Link className="button" to="/">Continue</Link></main>
 }
 
 function Layout({ children }) {
@@ -110,20 +145,9 @@ function Security() {
       })
       .catch((reason) => setError(reason.message))
   }, [])
-  async function report(eventId, isMe) {
-    const response = await api('/me/report', { method: 'POST', body: JSON.stringify({ event_id: eventId, is_me: isMe }) })
-    if (response.ok) {
-      if (isMe) {
-        setMessage('Device trusted and activity confirmed.')
-      } else {
-        setMessage('Your sessions were revoked. Please reset your password and sign in again.')
-        localStorage.removeItem('token')
-      }
-    } else setError('Could not report this activity')
-  }
   return <Layout><main><h1>My Security</h1>{error && <p className="error">{error}</p>}{message && <p className="success">{message}</p>}
     <section className="panel"><h2>Active sessions</h2>{sessions.length === 0 ? <p>No active sessions.</p> : <ul className="session-list">{sessions.map((session) => <li key={session.id}><strong>{session.device_id}</strong><span>{session.current ? 'Current device' : 'Active'} · {new Date(session.created_at).toLocaleString()}</span></li>)}</ul>}</section>
-    <section className="panel"><h2>Recent activity</h2>{activity.length === 0 ? <p>No recent activity.</p> : <ul className="activity-list">{activity.map((event) => <li key={event.id} className={event.type === 'new_device' ? 'new-device' : ''}><div><strong>{event.type === 'new_device' ? 'New device detected' : event.type.replaceAll('_', ' ')}</strong><span>{new Date(event.created_at).toLocaleString()}</span></div>{event.type === 'new_device' && <div className="report-actions"><button className="confirm-button" onClick={() => report(event.id, true)}>This was me</button><button className="report-button" onClick={() => report(event.id, false)}>This wasn't me</button></div>}</li>)}</ul>}</section>
+    <section className="panel"><h2>Recent activity</h2>{activity.length === 0 ? <p>No recent activity.</p> : <ul className="activity-list">{activity.map((event) => <li key={event.id} className={event.type === 'new_device' ? 'new-device' : ''}><div><strong>{event.type.replaceAll('_', ' ')}</strong><span>{new Date(event.created_at).toLocaleString()}</span></div></li>)}</ul>}</section>
   </main></Layout>
 }
 
@@ -133,5 +157,11 @@ function ProtectedRoutes() {
 }
 
 export default function App() {
-  return <BrowserRouter><Routes><Route path="/" element={<Login />} /><Route path="*" element={<ProtectedRoutes />} /></Routes></BrowserRouter>
+  return <BrowserRouter><Routes>
+    <Route path="/" element={<Login />} />
+    <Route path="/verify-email" element={<EmailAction action="/verify-email" />} />
+    <Route path="/verify-device" element={<EmailAction action="/verify-device" />} />
+    <Route path="/cancel-session" element={<EmailAction action="/cancel-session" />} />
+    <Route path="*" element={<ProtectedRoutes />} />
+  </Routes></BrowserRouter>
 }

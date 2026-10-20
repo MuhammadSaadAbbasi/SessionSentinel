@@ -20,6 +20,19 @@ if "users" in inspect(engine).get_table_names():
                     "BOOLEAN NOT NULL DEFAULT 0"
                 )
             )
+    if "email_verified" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 1"
+            ))
+    if "email_verified_at" not in columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
+    if "status" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'")
+            )
 
 app = FastAPI(title="SessionSentinel")             # asli application object
 

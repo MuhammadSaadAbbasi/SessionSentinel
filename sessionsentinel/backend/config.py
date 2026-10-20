@@ -35,4 +35,10 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 VERIFICATION_TTL_SECONDS = int(os.getenv("VERIFICATION_TTL_SECONDS", str(15 * 60)))
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8000")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173")
+EMAIL_VERIFICATION_TTL_SECONDS = int(
+    os.getenv("EMAIL_VERIFICATION_TTL_SECONDS", str(24 * 60 * 60))
+)
+SESSION_CANCELLATION_TTL_SECONDS = int(
+    os.getenv("SESSION_CANCELLATION_TTL_SECONDS", str(30 * 60))
+)

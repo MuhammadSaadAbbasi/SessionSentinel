@@ -8,6 +8,10 @@ export default defineConfig({
     port: 5173,            // admin-panel mein 5174 rakho
     proxy: {
       '/login':  'http://localhost:8000',
+      '/signup': 'http://localhost:8000',
+      '/verify-email': 'http://localhost:8000',
+      '/cancel-session': 'http://localhost:8000',
+      '/verify-device': 'http://localhost:8000',
       '/reset-password': 'http://localhost:8000',
       '/logout': 'http://localhost:8000',
       '/me':     'http://localhost:8000',

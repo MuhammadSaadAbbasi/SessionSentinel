@@ -63,7 +63,8 @@ revokes existing session tokens.
 
 ### Frontends
 
-- The demo site includes login, account, security activity, active sessions, 429 messaging, new-device warnings, and a “This wasn't me” report action.
+- The demo site includes signup with transactional email verification, login, account and security activity, active sessions, 429 messaging, new-device verification, and email links to cancel individual sign-in sessions.
+- Signup accounts remain pending until their single-use, hashed verification token is consumed. Verification and cancellation links are removed from the browser address bar before the frontend calls the API.
 - The admin panel includes dashboard counts, incident filters/details, status actions, and an audit log integrity screen.
 
 ### Local M4 verification

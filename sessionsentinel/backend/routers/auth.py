@@ -7,14 +7,29 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from deps import get_current_session
-from models import Event, Incident, TrustedDevice, User, UserSession, VerificationRequest, utcnow
-from schemas import LoginRequest, PasswordResetRequest
+from models import (
+    EmailVerificationRequest,
+    Event,
+    Incident,
+    SessionCancellationRequest,
+    TrustedDevice,
+    User,
+    UserSession,
+    VerificationRequest,
+    utcnow,
+)
+from schemas import LoginRequest, PasswordResetRequest, SignupRequest, TokenRequest
 from security import hash_password, new_token, verify_password
 from services.audit_log import append
 from services.email_service import (
     admin_recipient,
     create_notification,
     create_verification_request,
+    create_email_verification_request,
+    create_session_cancellation_request,
+    send_email,
+    EmailConfigurationError,
+    EmailDeliveryError,
     critical_login_body,
     failed_login_body,
     unusual_location_body,
@@ -30,6 +45,45 @@ from services.detection import (
 )
 
 router = APIRouter()
+
+
+@router.post("/signup", status_code=201)
+def signup(body: SignupRequest, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    if len(body.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+    if "@" not in email or email.count("@") != 1:
+        raise HTTPException(status_code=422, detail="Enter a valid email address")
+    existing = db.query(User).filter(User.email == email).first()
+    if existing is not None:
+        return {
+            "status": "pending",
+            "message": "If this address can be registered, a verification email has been sent.",
+        }
+    user = User(
+        email=email,
+        password_hash=hash_password(body.password),
+        role="user",
+        email_verified=False,
+        status="pending",
+    )
+    db.add(user)
+    db.flush()
+    _, verification_body = create_email_verification_request(db, user)
+    try:
+        send_email(
+            user.email,
+            "SessionSentinel: Verify your email address",
+            verification_body,
+        )
+    except (EmailConfigurationError, EmailDeliveryError) as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Verification email could not be sent") from exc
+    db.commit()
+    return {
+        "status": "pending",
+        "message": "Check your email to verify your account.",
+    }
 
 
 @router.post("/login")
@@ -53,6 +107,8 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
             status_code=403,
             detail="Password reset required before signing in",
         )
+    if user is not None and (not user.email_verified or user.status != "active"):
+        raise HTTPException(status_code=403, detail="Email verification required before signing in")
     ok = user is not None and verify_password(body.password, user.password_hash)
 
     if not ok:
@@ -205,6 +261,24 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     token = new_token()
     session = UserSession(user_id=user.id, token=token, device_id=body.device_id)
     db.add(session)
+    db.flush()
+    _, cancellation_body = create_session_cancellation_request(db, user, session)
+    cancellation_email_sent = True
+    try:
+        send_email(
+            user.email,
+            "SessionSentinel: New sign-in session",
+            cancellation_body,
+        )
+    except (EmailConfigurationError, EmailDeliveryError):
+        cancellation_email_sent = False
+        db.add(Event(
+            user_id=user.id,
+            email_tried=user.email,
+            device_id=body.device_id,
+            ip=ip,
+            type="session_cancellation_email_failed",
+        ))
     if r1_active and (unfamiliar_device or unusual_location):
         session.revoked = True
         append(db, "high_risk_session_held", "system", f"user_id={user.id};device_id={body.device_id}")
@@ -216,6 +290,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         "requires_reauthentication": bool(
             r1_active and (unfamiliar_device or unusual_location)
         ),
+        "session_cancellation_email_sent": cancellation_email_sent,
     }
 
 
@@ -256,6 +331,51 @@ def verify_device(token: str = Query(min_length=20), db: Session = Depends(get_d
     )
     db.commit()
     return {"status": "verified", "device_id": request.device_id}
+
+
+@router.post("/verify-device")
+def verify_device_from_frontend(body: TokenRequest, db: Session = Depends(get_db)):
+    return verify_device(token=body.token, db=db)
+
+
+@router.post("/verify-email")
+def verify_email(body: TokenRequest, db: Session = Depends(get_db)):
+    token_hash = hashlib.sha256(body.token.encode("utf-8")).hexdigest()
+    request = db.query(EmailVerificationRequest).filter(
+        EmailVerificationRequest.token_hash == token_hash,
+        EmailVerificationRequest.used_at.is_(None),
+    ).first()
+    if request is None or request.expires_at <= utcnow():
+        raise HTTPException(status_code=400, detail="Verification link is invalid, expired, or already used")
+    user = db.get(User, request.user_id)
+    if user is None:
+        raise HTTPException(status_code=400, detail="Verification account not found")
+    request.used_at = utcnow()
+    user.email_verified = True
+    user.email_verified_at = utcnow()
+    user.status = "active"
+    append(db, "email_verified", user.email, f"user_id={user.id}")
+    db.commit()
+    return {"status": "verified"}
+
+
+@router.post("/cancel-session")
+def cancel_session(body: TokenRequest, db: Session = Depends(get_db)):
+    token_hash = hashlib.sha256(body.token.encode("utf-8")).hexdigest()
+    request = db.query(SessionCancellationRequest).filter(
+        SessionCancellationRequest.token_hash == token_hash,
+        SessionCancellationRequest.used_at.is_(None),
+    ).first()
+    if request is None or request.expires_at <= utcnow():
+        raise HTTPException(status_code=400, detail="Cancellation link is invalid, expired, or already used")
+    session = db.get(UserSession, request.session_id)
+    if session is None or session.user_id != request.user_id:
+        raise HTTPException(status_code=400, detail="Session cancellation request is invalid")
+    request.used_at = utcnow()
+    session.revoked = True
+    append(db, "session_cancelled_by_email", "user", f"session_id={session.id}")
+    db.commit()
+    return {"status": "cancelled"}
 
 
 @router.post("/logout")

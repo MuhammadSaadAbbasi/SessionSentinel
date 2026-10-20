@@ -16,8 +16,18 @@ from config import (
     SMTP_PORT,
     SMTP_TIMEOUT_SECONDS,
     VERIFICATION_TTL_SECONDS,
+    EMAIL_VERIFICATION_TTL_SECONDS,
+    SESSION_CANCELLATION_TTL_SECONDS,
 )
-from models import Notification, User, VerificationRequest, utcnow
+from models import (
+    EmailVerificationRequest,
+    Notification,
+    SessionCancellationRequest,
+    User,
+    UserSession,
+    VerificationRequest,
+    utcnow,
+)
 
 
 class EmailConfigurationError(RuntimeError):
@@ -168,6 +178,46 @@ def create_verification_request(db, user: User, device_id: str, ip: str | None):
         "If you did not initiate this sign-in, do not use the link and secure your account."
     )
     return request, raw_token, body
+
+
+def create_email_verification_request(db, user: User):
+    raw_token = secrets.token_urlsafe(32)
+    request = EmailVerificationRequest(
+        user_id=user.id,
+        token_hash=hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+        expires_at=utcnow() + timedelta(seconds=EMAIL_VERIFICATION_TTL_SECONDS),
+    )
+    db.add(request)
+    db.flush()
+    link = f"{APP_BASE_URL.rstrip('/')}/verify-email?token={quote(raw_token)}"
+    body = (
+        "SessionSentinel Email Verification\n\n"
+        f"Verify your account using this link (valid for "
+        f"{EMAIL_VERIFICATION_TTL_SECONDS // 3600} hours):\n{link}\n\n"
+        "If you did not create this account, ignore this message."
+    )
+    return request, body
+
+
+def create_session_cancellation_request(db, user: User, session: UserSession):
+    raw_token = secrets.token_urlsafe(32)
+    request = SessionCancellationRequest(
+        user_id=user.id,
+        session_id=session.id,
+        token_hash=hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+        expires_at=utcnow() + timedelta(seconds=SESSION_CANCELLATION_TTL_SECONDS),
+    )
+    db.add(request)
+    db.flush()
+    link = f"{APP_BASE_URL.rstrip('/')}/cancel-session?token={quote(raw_token)}"
+    body = (
+        "SessionSentinel Session Security\n\n"
+        f"A new sign-in session was created for {user.email}.\n\n"
+        f"If this was not you, cancel it here (link valid for "
+        f"{SESSION_CANCELLATION_TTL_SECONDS // 60} minutes):\n{link}\n\n"
+        "This link cancels only this sign-in session."
+    )
+    return request, body
 
 
 def admin_recipient() -> str | None:
