@@ -63,3 +63,57 @@ h3 { margin: 0; font-size: 1.08rem; letter-spacing: -.02em; }
 .auth-page { min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 20% 10%, #dfe8ff, transparent 36%), #f7f9fc; }.auth-card { width: min(420px, calc(100% - 2rem)); padding: 2.4rem; background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 20px 60px #26375d12; }.auth-card .brand-mark { margin-bottom: 1.8rem; }.auth-card h1 { font-size: 2rem; }.auth-card form { display: grid; gap: 1rem; margin-top: 1.8rem; }.auth-card label { display: grid; gap: .4rem; font-size: .8rem; font-weight: 700; }.auth-card button { margin-top: .35rem; padding: .85rem; }.auth-card button span { float: right; font-size: 1.1rem; }
 @media (max-width: 850px) { .sidebar { width: 76px; padding: 1.7rem .6rem; }.brand { padding: 0; justify-content: center; }.brand > span:last-child, .sidebar-label, .side-nav a:not(:first-child) span, .sidebar-footer { display: none; }.side-nav a { justify-content: center; }.topbar, .page { padding-left: 1.25rem; padding-right: 1.25rem; }.dashboard-grid, .detail-grid { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .stats { grid-template-columns: 1fr; }.page-heading, .detail-heading { align-items: flex-start; flex-direction: column; }.row-date { display: none; }.incident-row { flex-wrap: wrap; }.filters { flex-wrap: wrap; }.topbar h2 { display: none; } }
+
+/* Polished interaction layer */
+body { background-image: radial-gradient(ellipse at 92% 4%, #e8eefb 0, transparent 28%), linear-gradient(135deg, #f8faff, #f3f6fa); }
+.auth-page { position: relative; overflow: hidden; background: radial-gradient(ellipse at 14% 14%, #dce6ff 0, transparent 34%), radial-gradient(ellipse at 88% 86%, #e2eafa 0, transparent 34%), #f7f9fc; }
+.auth-page::before, .auth-page::after { position: absolute; z-index: 0; content: ''; width: 420px; height: 420px; border: 1px solid #4462b30e; border-radius: 50%; pointer-events: none; }
+.auth-page::before { top: -260px; left: -190px; box-shadow: 0 0 0 45px #4462b308, 0 0 0 90px #4462b306; animation: admin-orbit 28s ease-in-out infinite alternate; }
+.auth-page::after { right: -280px; bottom: -300px; box-shadow: 0 0 0 55px #4462b308; }
+.auth-card { position: relative; z-index: 1; animation: admin-enter .65s cubic-bezier(.2,.8,.2,1) both; transition: transform .25s, box-shadow .25s; }
+.auth-card:hover { transform: translateY(-3px); box-shadow: 0 26px 72px #26375d18; }
+.auth-card .brand-mark { box-shadow: 0 8px 20px #4775ff30; animation: mark-in .6s .2s both; }
+.auth-card form label { color: #3e4e63; }
+.auth-card input { transition: border-color .18s, box-shadow .18s, transform .18s; }
+.auth-card input:focus { outline: 0; border-color: #7189ed; box-shadow: 0 0 0 3px #5577ef1b; }
+.auth-card form > button[type="submit"] { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 46px; transition: transform .2s, box-shadow .2s, background .2s; box-shadow: 0 6px 14px #315efb29; }
+.auth-card form > button[type="submit"] span { transition: transform .2s; }
+.auth-card form > button[type="submit"]:hover { transform: translateY(-2px); background: #244de0; box-shadow: 0 10px 22px #315efb3b; }
+.auth-card form > button[type="submit"]:hover span { transform: translateX(4px); }
+.auth-card form > button[type="submit"]:active { transform: translateY(0) scale(.99); }
+.password-toggle { transition: color .18s, transform .18s; }
+.password-toggle:hover { color: #213fc0; transform: scale(1.04); }
+.app-shell { animation: admin-enter .45s both; }
+.sidebar { box-shadow: 7px 0 25px #13213c0b; }
+.brand-mark { transition: transform .22s, box-shadow .22s; }
+.brand:hover .brand-mark { transform: rotate(-7deg) scale(1.08); box-shadow: 0 7px 20px #6c80ff50; }
+.side-nav a { position: relative; overflow: hidden; transition: color .2s, background .2s, transform .2s, box-shadow .2s; }
+.side-nav a::after { position: absolute; inset: 0; content: ''; background: linear-gradient(100deg, transparent, #ffffff0b, transparent); transform: translateX(-120%); transition: transform .45s; }
+.side-nav a:hover { transform: translateX(3px); }
+.side-nav a:hover::after { transform: translateX(120%); }
+.topbar { backdrop-filter: blur(12px); }
+.live-pill .status-dot { animation: green-pulse 2.2s ease-in-out infinite; }
+.page { animation: admin-enter .45s both; }
+.stat-card, .panel { transition: transform .22s, box-shadow .22s, border-color .22s; }
+.stat-card:hover, .panel:hover { transform: translateY(-3px); border-color: #d2dcf2; box-shadow: 0 13px 30px #19294b0d; }
+.stat-icon { transition: transform .25s; }
+.stat-card:hover .stat-icon { transform: rotate(-7deg) scale(1.08); }
+.incident-row { position: relative; overflow: hidden; transition: transform .2s, border-color .2s, box-shadow .2s, background .2s; }
+.incident-list .incident-row { box-shadow: 0 2px 8px #19294b04; }
+.incident-row:hover, .incident-list .incident-row:hover { transform: translateY(-2px); border-color: #b9c8ff; background: #fbfcff; box-shadow: 0 9px 20px #315efb12; }
+.incident-row-main strong { transition: color .18s; }.incident-row:hover .incident-row-main strong { color: #315efb; }
+.incident-indicator { transition: transform .2s, box-shadow .2s; }.incident-row:hover .incident-indicator { transform: scale(1.25); box-shadow: 0 0 0 4px #e7edff; }
+.badge { transition: transform .2s, box-shadow .2s; }.incident-row:hover .badge { transform: scale(1.04); }
+.rule-row { transition: background .18s, padding .18s; border-radius: 6px; }.rule-row:hover { padding-right: 8px; padding-left: 8px; background: #f6f8ff; }
+.filters select { transition: border-color .18s, box-shadow .18s, transform .18s; }.filters select:focus { outline: 0; border-color: #879bf0; box-shadow: 0 0 0 3px #5577ef16; }
+.actions button, .button, .button-secondary, .button-quiet { transition: transform .18s, box-shadow .18s, background .18s; }
+.actions button:hover, .button:hover, .button-secondary:hover, .button-quiet:hover { transform: translateY(-2px); box-shadow: 0 6px 15px #273b6818; }
+.timeline-dot { animation: dot-glow 2.8s ease-in-out infinite; }
+.audit-entry { transition: transform .2s, border-color .2s, box-shadow .2s; }.audit-entry:hover { transform: translateY(-2px); border-color: #cbd6fa; box-shadow: 0 9px 20px #26375d0d; }
+.audit-icon { transition: transform .22s, background .22s; }.audit-entry:hover .audit-icon { transform: rotate(-6deg); background: #dfe7ff; }
+@keyframes admin-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes mark-in { from { opacity: 0; transform: scale(.85) rotate(-10deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes admin-orbit { from { transform: translate(0, 0) rotate(0); } to { transform: translate(18px, 16px) rotate(8deg); } }
+@keyframes green-pulse { 50% { box-shadow: 0 0 0 5px #31c48d1a; opacity: .8; } }
+@keyframes dot-glow { 50% { box-shadow: 0 0 0 4px #d9e3ff; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
