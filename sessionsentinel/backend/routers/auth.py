@@ -1,6 +1,7 @@
 # routers/auth.py
 # /login aur /logout.
 import hashlib
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -45,6 +46,7 @@ from services.detection import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/signup", status_code=201)
@@ -78,6 +80,7 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
         )
     except (EmailConfigurationError, EmailDeliveryError) as exc:
         db.rollback()
+        logger.error("Signup verification email failed: %s", exc)
         raise HTTPException(status_code=503, detail="Verification email could not be sent") from exc
     db.commit()
     return {

@@ -2,12 +2,11 @@
 
 import hashlib
 import html
+import logging
 import secrets
 from datetime import timedelta
 from urllib.parse import quote
 
-import logging
-import html
 import resend
 from resend.exceptions import ResendError
 
