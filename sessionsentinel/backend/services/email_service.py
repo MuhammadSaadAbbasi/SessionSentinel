@@ -102,9 +102,12 @@ def create_notification(
     db.flush()
     try:
         send_email(recipient, subject, body)
-    except (EmailConfigurationError, EmailDeliveryError) as exc:
-        notification.status = "failed"
-        notification.last_error = str(exc)
+    except Exception as exc:
+        logger.exception("Resend API request failed")
+        details = str(exc)
+        raise EmailDeliveryError(
+            f"Resend rejected email: {type(exc).__name__}: {details[:400]}"
+        ) from exc
     else:
         notification.status = "sent"
         notification.sent_at = utcnow()
