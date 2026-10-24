@@ -6,6 +6,8 @@ import secrets
 from datetime import timedelta
 from urllib.parse import quote
 
+import logging
+import html
 import resend
 from resend.exceptions import ResendError
 
@@ -41,14 +43,20 @@ def _resend_configured() -> bool:
     return bool(RESEND_API_KEY and RESEND_FROM_EMAIL)
 
 
+
+logger = logging.getLogger(__name__)
+
 def send_email(recipient: str, subject: str, body: str) -> None:
     if not _resend_configured():
         raise EmailConfigurationError(
             "Resend is not configured; set RESEND_API_KEY and RESEND_FROM_EMAIL"
         )
+
     if "@" not in recipient or recipient.count("@") != 1:
         raise EmailDeliveryError("Invalid notification recipient")
+
     resend.api_key = RESEND_API_KEY
+
     try:
         resend.Emails.send(
             {
@@ -58,8 +66,11 @@ def send_email(recipient: str, subject: str, body: str) -> None:
                 "html": html.escape(body).replace("\n", "<br>"),
             }
         )
-    except ResendError as exc:
-        raise EmailDeliveryError(f"Resend delivery failed: {type(exc).__name__}") from exc
+    except Exception as exc:
+        logger.exception("Email sending failed; exception type: %s", type(exc).__name__)
+        raise EmailDeliveryError(
+            f"Email delivery failed ({type(exc).__name__})"
+        ) from exc
 
 
 def create_notification(
