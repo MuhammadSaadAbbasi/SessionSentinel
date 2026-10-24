@@ -1,10 +1,12 @@
 # main.py
 # App ka entry point. uvicorn isi file ko chalata hai: uvicorn main:app
 
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from sqlalchemy import inspect, text
 
 from database import Base, engine
+from config import FRONTEND_ORIGINS
 import models                                      # noqa: F401  (tables register hon, is liye import zaroori)
 from routers import auth, me, admin, audit         # chaaron routers (abhi khali, Day 2 se bharenge)
 
@@ -27,7 +29,9 @@ if "users" in inspect(engine).get_table_names():
             ))
     if "email_verified_at" not in columns:
         with engine.begin() as connection:
-            connection.execute(text("ALTER TABLE users ADD COLUMN email_verified_at DATETIME"))
+            connection.execute(
+                text("ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMP")
+            )
     if "status" not in columns:
         with engine.begin() as connection:
             connection.execute(
@@ -35,6 +39,13 @@ if "users" in inspect(engine).get_table_names():
             )
 
 app = FastAPI(title="SessionSentinel")             # asli application object
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=FRONTEND_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Har router ke endpoints ko app se jodo
 app.include_router(auth.router)

@@ -356,7 +356,7 @@ def verify_email(body: TokenRequest, db: Session = Depends(get_db)):
     user.status = "active"
     append(db, "email_verified", user.email, f"user_id={user.id}")
     db.commit()
-    return {"status": "verified"}
+    return {"status": "verified", "email": user.email}
 
 
 @router.post("/cancel-session")

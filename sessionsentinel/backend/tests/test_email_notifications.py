@@ -123,9 +123,9 @@ def test_expired_verification_is_rejected(client):
     assert client.get("/verify-device", params={"token": raw_token}).status_code == 400
 
 
-def test_smtp_configuration_failure_is_recorded_without_raising(monkeypatch):
+def test_resend_configuration_failure_is_recorded_without_raising(monkeypatch):
     def fail(*args, **kwargs):
-        raise EmailConfigurationError("SMTP is not configured")
+        raise EmailConfigurationError("Resend is not configured")
 
     monkeypatch.setattr(email_service, "send_email", fail)
     db = SessionLocal()
@@ -141,7 +141,7 @@ def test_smtp_configuration_failure_is_recorded_without_raising(monkeypatch):
     )
     db.commit()
     assert notification.status == "failed"
-    assert "SMTP is not configured" in notification.last_error
+    assert "Resend is not configured" in notification.last_error
     db.close()
 
 

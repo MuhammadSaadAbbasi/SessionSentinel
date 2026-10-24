@@ -1,20 +1,19 @@
-"""Bounded SMTP delivery and security-email templates."""
+"""Resend delivery and security-email templates."""
 
 import hashlib
+import html
 import secrets
-import smtplib
 from datetime import timedelta
-from email.message import EmailMessage
 from urllib.parse import quote
+
+import resend
+from resend.exceptions import ResendError
 
 from config import (
     ADMIN_EMAIL,
     APP_BASE_URL,
-    SMTP_EMAIL,
-    SMTP_HOST,
-    SMTP_PASSWORD,
-    SMTP_PORT,
-    SMTP_TIMEOUT_SECONDS,
+    RESEND_API_KEY,
+    RESEND_FROM_EMAIL,
     VERIFICATION_TTL_SECONDS,
     EMAIL_VERIFICATION_TTL_SECONDS,
     SESSION_CANCELLATION_TTL_SECONDS,
@@ -38,31 +37,29 @@ class EmailDeliveryError(RuntimeError):
     pass
 
 
-def _smtp_configured() -> bool:
-    return all((SMTP_HOST, SMTP_EMAIL, SMTP_PASSWORD, SMTP_PORT))
+def _resend_configured() -> bool:
+    return bool(RESEND_API_KEY and RESEND_FROM_EMAIL)
 
 
 def send_email(recipient: str, subject: str, body: str) -> None:
-    if not _smtp_configured():
+    if not _resend_configured():
         raise EmailConfigurationError(
-            "SMTP is not configured; set SMTP_HOST, SMTP_EMAIL, SMTP_PASSWORD, and SMTP_PORT"
+            "Resend is not configured; set RESEND_API_KEY and RESEND_FROM_EMAIL"
         )
     if "@" not in recipient or recipient.count("@") != 1:
         raise EmailDeliveryError("Invalid notification recipient")
-    message = EmailMessage()
-    message["From"] = SMTP_EMAIL
-    message["To"] = recipient
-    message["Subject"] = subject
-    message.set_content(body)
+    resend.api_key = RESEND_API_KEY
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-            smtp.login(SMTP_EMAIL, SMTP_PASSWORD)
-            smtp.send_message(message)
-    except (OSError, smtplib.SMTPException) as exc:
-        raise EmailDeliveryError(f"SMTP delivery failed: {type(exc).__name__}") from exc
+        resend.Emails.send(
+            {
+                "from": RESEND_FROM_EMAIL,
+                "to": recipient,
+                "subject": subject,
+                "html": html.escape(body).replace("\n", "<br>"),
+            }
+        )
+    except ResendError as exc:
+        raise EmailDeliveryError(f"Resend delivery failed: {type(exc).__name__}") from exc
 
 
 def create_notification(

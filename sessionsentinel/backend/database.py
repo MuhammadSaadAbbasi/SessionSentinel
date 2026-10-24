@@ -7,10 +7,9 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from config import DATABASE_URL    # config.py se database ka address
 
-# engine = database tak pahunchne ka "rasta".
-# check_same_thread=False: SQLite ko batata hai ke FastAPI kai threads se use karega.
-# (Ye option sirf SQLite ke liye hai.)
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# SQLite needs check_same_thread; PostgreSQL does not accept that option.
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
 
 # SessionLocal = ek factory. Isay call karo to database ke saath "baat-cheet" (db session) milta hai.
 # NOTE: ye SQLAlchemy ka db session hai. Hamare "login session" (token wale) se alag cheez hai.

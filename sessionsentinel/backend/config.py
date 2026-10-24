@@ -9,10 +9,15 @@ from dotenv import load_dotenv     # .env file parhne wala package (python-doten
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-# Database ka address. "sqlite:///./sessionsentinel.db" ka matlab:
-# SQLite database, jo current folder mein ek file ban kar rahegi.
-# Agar .env mein DATABASE_URL likha ho to wo use hoga, warna ye default.
+# Database connection URL. Render provides a PostgreSQL URL through DATABASE_URL.
+# SQLite remains the local fallback when no environment variable is set.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sessionsentinel.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
 
 # Session token kitne ghante tak valid rahe ga (Day 2 mein login isay use karega)
 SESSION_HOURS = int(os.getenv("SESSION_HOURS", "8"))
@@ -28,14 +33,16 @@ R1_LOCK_SECONDS = int(os.getenv("R1_LOCK_SECONDS", str(30 * 60)))
 R6_ACCOUNT_THRESHOLD = int(os.getenv("R6_ACCOUNT_THRESHOLD", "3"))
 R6_IP_THROTTLE_SECONDS = int(os.getenv("R6_IP_THROTTLE_SECONDS", str(15 * 60)))
 
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
-SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 VERIFICATION_TTL_SECONDS = int(os.getenv("VERIFICATION_TTL_SECONDS", str(15 * 60)))
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+FRONTEND_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGINS", APP_BASE_URL).split(",")
+    if origin.strip()
+]
 EMAIL_VERIFICATION_TTL_SECONDS = int(
     os.getenv("EMAIL_VERIFICATION_TTL_SECONDS", str(24 * 60 * 60))
 )

@@ -2,23 +2,32 @@
 
 ## Implemented detection rules R1-R6
 
-## SMTP security notifications
+## Resend security notifications
 
 Security notifications are persisted in the backend `notifications` table and delivered
-through bounded SMTP STARTTLS connections. A provider outage does not undo a recorded
-event or bypass rate limiting: the notification is marked `failed` and an administrator
-can retry it from the incident detail screen.
+through the Resend API. A provider outage does not undo a recorded event or bypass rate
+limiting: the notification is marked `failed` and an administrator can retry it from the
+incident detail screen.
 
-Copy `backend/.env.example` to `backend/.env` and fill in the SMTP values. The real
+Copy `backend/.env.example` to `backend/.env` and fill in the Resend values. The real
 `.env` file is ignored by Git.
 
-For Gmail:
+For Render, set these backend environment variables to the deployed frontend URLs
+(do not leave the localhost defaults):
 
-1. Enable two-step verification on the sender Google account.
-2. Open **Google Account → Security → 2-Step Verification → App passwords**.
-3. Create an app password for SessionSentinel and put the generated 16-character value
-   in `SMTP_PASSWORD`; do not use the normal Google password.
-4. Set `SMTP_EMAIL` to the sender account and `ADMIN_EMAIL` to the administrator inbox.
+```text
+APP_BASE_URL=https://your-demo-site.onrender.com
+FRONTEND_ORIGINS=https://your-demo-site.onrender.com,https://your-admin-panel.onrender.com
+```
+
+Set `VITE_API_URL=https://your-api.onrender.com` in both frontend services. Email
+verification, device verification, and session-cancellation links use `APP_BASE_URL`;
+the verification page then sends the user to sign in on the deployed demo site.
+
+1. Create a Resend API key and set it as `RESEND_API_KEY`.
+2. Set `RESEND_FROM_EMAIL` to a verified Resend sender. For local testing, use
+   `onboarding@resend.dev`.
+3. Set `ADMIN_EMAIL` to the administrator inbox.
 
 Start the backend from the repository's `sessionsentinel/backend` directory so the
 configured database and environment are used:

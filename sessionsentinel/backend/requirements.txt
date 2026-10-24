@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 sqlalchemy
+psycopg[binary]
 argon2-cffi
 python-dotenv
 requests
 pytest
 httpx
+resend

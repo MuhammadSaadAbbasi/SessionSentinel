@@ -23,9 +23,11 @@ function PasswordField({ value, onChange }) {
 
 function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('ali@test.com')
+  const [email, setEmail] = useState(() => new URLSearchParams(window.location.search).get('email') || 'ali@test.com')
   const [password, setPassword] = useState('Test@12345')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => new URLSearchParams(window.location.search).get('verified') === '1'
+    ? 'Email verified. Sign in to open your account.'
+    : '')
   const [mode, setMode] = useState('login')
 
   async function submit(event) {
@@ -99,6 +101,7 @@ function Login() {
 }
 
 function EmailAction({ action }) {
+  const navigate = useNavigate()
   const [message, setMessage] = useState(() => new URLSearchParams(window.location.search).get('token') ? 'Processing link...' : 'This link is missing its security token.')
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('token')
@@ -110,13 +113,17 @@ function EmailAction({ action }) {
     }).then(async (response) => {
       const body = await response.json()
       if (!response.ok) throw new Error(body.detail || 'This link is invalid or expired.')
-      setMessage(action === '/verify-email'
-        ? 'Email verified. You can now sign in.'
+      if (action === '/verify-email') {
+        navigate(`/?verified=1&email=${encodeURIComponent(body.email || '')}`, { replace: true })
+        return
+      }
+      setMessage(action === '/verify-device'
+        ? 'Device verified. You can now sign in.'
         : action === '/verify-device'
           ? 'Device verified. You can now sign in.'
           : 'The sign-in session has been cancelled.')
     }).catch((reason) => setMessage(reason.message))
-  }, [action])
+  }, [action, navigate])
   return <main className="auth-page"><section className="auth-card auth-action-card"><span className="brand-mark">S</span><p className="eyebrow">SECURITY CHECK</p><h1>SessionSentinel</h1><p className="muted">{message}</p><Link className="button" to="/">Continue to sign in <span>→</span></Link></section></main>
 }
 
