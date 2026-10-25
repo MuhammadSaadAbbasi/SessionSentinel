@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import './App.css'
 
@@ -135,7 +135,7 @@ function Layout({ children }) {
     navigate('/')
   }
   return <div className="shell">
-    <header className="site-header"><Link className="site-brand" to="/account"><span className="brand-mark">S</span><span>Session<span>Sentinel</span></span></Link><nav className="site-nav"><Link to="/account">Account</Link><Link to="/security">My Security</Link><button className="link-button" onClick={logout}>Log out</button></nav></header>
+    <header className="site-header"><Link className="site-brand" to="/account"><span className="brand-mark">S</span><span>Session<span>Sentinel</span></span></Link><nav className="site-nav" aria-label="Account navigation"><NavLink to="/account">Account</NavLink><NavLink to="/security">My Security</NavLink><button className="link-button" onClick={logout}>Log out</button></nav></header>
     {children}
   </div>
 }
