@@ -20,7 +20,8 @@ APP_BASE_URL=https://your-demo-site.onrender.com
 FRONTEND_ORIGINS=https://your-demo-site.onrender.com,https://your-admin-panel.onrender.com
 ```
 
-Set `VITE_API_URL=https://your-api.onrender.com` in both frontend services. Email
+Set `VITE_API_URL=https://your-api.onrender.com` in both frontend services. The
+repository includes `.env.example` files in `demo-site` and `admin-panel`. Email
 verification, device verification, and session-cancellation links use `APP_BASE_URL`;
 the verification page then sends the user to sign in on the deployed demo site.
 
@@ -29,6 +30,11 @@ For Vercel deployments, set each project's **Root Directory** to its frontend fo
 include a `vercel.json` SPA rewrite so direct links such as `/verify-email?token=...`
 load the React application instead of returning Vercel `404 NOT_FOUND`. Set
 `VITE_API_URL` to the Render backend URL; do not leave it empty in production.
+For the Vercel project currently serving `session-sentinel-mpyk.vercel.app`, add
+`VITE_API_URL` under **Production** environment variables, using the exact URL of
+your Render FastAPI service (for example, `https://sessionsentinel-w2hu.onrender.com`
+if that is the service URL shown in your Render dashboard), then redeploy. Vite
+embeds this value at build time; changing it without a new deployment has no effect.
 
 1. Create a Mailjet API key and set `MAILJET_API_KEY` to its public API key.
 2. Set `MAILJET_API_SECRET` to its private API secret.
