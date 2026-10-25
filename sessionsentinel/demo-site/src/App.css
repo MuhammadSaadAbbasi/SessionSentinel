@@ -71,6 +71,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .site-nav { display: flex; align-items: center; gap: 5px; }
 .site-nav a, .site-nav button { display: inline-flex; align-items: center; min-height: 35px; margin: 0 !important; padding: 0 12px !important; color: #607067; background: transparent !important; border: 0 !important; border-radius: 7px !important; font-size: 10px; font-weight: 700; transition: color .18s, background .18s, transform .18s; }
 .site-nav a:hover, .site-nav button:hover { color: #1d6240; background: #e8f2ea !important; transform: translateY(-1px); }
+.site-nav a[aria-current="page"] { color: #1d6240; background: #e8f2ea !important; }
 .page-main { padding: 42px 0 20px; animation: rise-in .5s both; }
 .page-heading { margin-bottom: 23px; }
 .page-heading h1 { margin: 9px 0 6px; color: #1b2d22; font: 700 29px/1.2 Manrope, sans-serif; letter-spacing: -1.1px; }
