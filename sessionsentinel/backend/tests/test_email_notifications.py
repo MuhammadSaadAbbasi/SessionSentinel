@@ -1,6 +1,10 @@
 from datetime import timedelta
+from types import SimpleNamespace
+
+import pytest
 
 import services.email_service as email_service
+REAL_SEND_EMAIL = email_service.send_email
 from config import R1_CRITICAL_FAILS, R1_HIGH_FAILS
 from database import SessionLocal
 from models import Event, TrustedDevice, User, VerificationRequest, utcnow
@@ -8,10 +12,90 @@ from services.detection import record_r1_incident
 from services.detection import ip_retry_after
 from services.email_service import (
     EmailConfigurationError,
+    EmailDeliveryError,
     create_notification,
     create_verification_request,
 )
 from security import hash_password
+
+
+def _configure_mailjet(monkeypatch):
+    monkeypatch.setattr(email_service, "MAILJET_API_KEY", "public-key")
+    monkeypatch.setattr(email_service, "MAILJET_API_SECRET", "private-secret")
+    monkeypatch.setattr(email_service, "MAILJET_FROM_EMAIL", "alerts@example.com")
+    monkeypatch.setattr(email_service, "MAILJET_FROM_NAME", "SessionSentinel")
+
+
+def test_send_email_posts_mailjet_v31_message(monkeypatch):
+    _configure_mailjet(monkeypatch)
+    response = SimpleNamespace(
+        status_code=200,
+        json=lambda: {"Messages": [{"Status": "success"}]},
+    )
+    captured = {}
+
+    def post(url, **kwargs):
+        captured.update(url=url, kwargs=kwargs)
+        return response
+
+    monkeypatch.setattr(email_service.requests, "post", post)
+
+    REAL_SEND_EMAIL("user@example.com", "Subject", "Hello <user>\nThanks")
+
+    assert captured["url"] == email_service.MAILJET_SEND_URL
+    assert captured["kwargs"]["auth"] == ("public-key", "private-secret")
+    assert captured["kwargs"]["timeout"] == email_service.MAILJET_TIMEOUT_SECONDS
+    message = captured["kwargs"]["json"]["Messages"][0]
+    assert message["From"] == {"Email": "alerts@example.com", "Name": "SessionSentinel"}
+    assert message["To"] == [{"Email": "user@example.com"}]
+    assert message["TextPart"] == "Hello <user>\nThanks"
+    assert message["HTMLPart"] == "Hello &lt;user&gt;<br>Thanks"
+
+
+def test_send_email_requires_mailjet_configuration(monkeypatch):
+    monkeypatch.setattr(email_service, "MAILJET_API_KEY", "")
+
+    with pytest.raises(EmailConfigurationError, match="MAILJET_API_KEY"):
+        REAL_SEND_EMAIL("user@example.com", "Subject", "Body")
+
+
+def test_send_email_reports_mailjet_rejection(monkeypatch):
+    _configure_mailjet(monkeypatch)
+    monkeypatch.setattr(
+        email_service.requests,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(
+            status_code=200,
+            json=lambda: {"Messages": [{"Status": "error"}]},
+        ),
+    )
+
+    with pytest.raises(EmailDeliveryError, match="did not accept"):
+        REAL_SEND_EMAIL("user@example.com", "Subject", "Body")
+
+
+def test_send_email_reports_malformed_mailjet_response(monkeypatch):
+    _configure_mailjet(monkeypatch)
+    monkeypatch.setattr(
+        email_service.requests,
+        "post",
+        lambda *args, **kwargs: SimpleNamespace(status_code=200, json=lambda: {}),
+    )
+
+    with pytest.raises(EmailDeliveryError, match="invalid message result"):
+        REAL_SEND_EMAIL("user@example.com", "Subject", "Body")
+
+
+def test_send_email_reports_mailjet_timeout(monkeypatch):
+    _configure_mailjet(monkeypatch)
+
+    def timeout(*args, **kwargs):
+        raise email_service.requests.Timeout()
+
+    monkeypatch.setattr(email_service.requests, "post", timeout)
+
+    with pytest.raises(EmailDeliveryError, match="timed out"):
+        REAL_SEND_EMAIL("user@example.com", "Subject", "Body")
 
 
 def _user(db, suffix):
@@ -123,9 +207,9 @@ def test_expired_verification_is_rejected(client):
     assert client.get("/verify-device", params={"token": raw_token}).status_code == 400
 
 
-def test_resend_configuration_failure_is_recorded_without_raising(monkeypatch):
+def test_mailjet_configuration_failure_is_recorded_without_raising(monkeypatch):
     def fail(*args, **kwargs):
-        raise EmailConfigurationError("Resend is not configured")
+        raise EmailConfigurationError("Mailjet is not configured")
 
     monkeypatch.setattr(email_service, "send_email", fail)
     db = SessionLocal()
@@ -141,7 +225,7 @@ def test_resend_configuration_failure_is_recorded_without_raising(monkeypatch):
     )
     db.commit()
     assert notification.status == "failed"
-    assert "Resend is not configured" in notification.last_error
+    assert "Mailjet is not configured" in notification.last_error
     db.close()
 
 

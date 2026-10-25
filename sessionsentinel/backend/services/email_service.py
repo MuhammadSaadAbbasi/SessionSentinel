@@ -1,20 +1,22 @@
-"""Resend delivery and security-email templates."""
+"""Mailjet delivery and security-email templates."""
 
 import hashlib
 import html
 import logging
+import re
 import secrets
 from datetime import timedelta
 from urllib.parse import quote
 
-import resend
-from resend.exceptions import ResendError
+import requests
 
 from config import (
     ADMIN_EMAIL,
     APP_BASE_URL,
-    RESEND_API_KEY,
-    RESEND_FROM_EMAIL,
+    MAILJET_API_KEY,
+    MAILJET_API_SECRET,
+    MAILJET_FROM_EMAIL,
+    MAILJET_FROM_NAME,
     VERIFICATION_TTL_SECONDS,
     EMAIL_VERIFICATION_TTL_SECONDS,
     SESSION_CANCELLATION_TTL_SECONDS,
@@ -38,38 +40,82 @@ class EmailDeliveryError(RuntimeError):
     pass
 
 
-def _resend_configured() -> bool:
-    return bool(RESEND_API_KEY and RESEND_FROM_EMAIL)
-
-
-
 logger = logging.getLogger(__name__)
+MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
+MAILJET_TIMEOUT_SECONDS = 15
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _mailjet_configured() -> bool:
+    return bool(
+        MAILJET_API_KEY
+        and MAILJET_API_SECRET
+        and MAILJET_FROM_EMAIL
+        and MAILJET_FROM_NAME
+    )
+
 
 def send_email(recipient: str, subject: str, body: str) -> None:
-    if not _resend_configured():
+    if not _mailjet_configured():
         raise EmailConfigurationError(
-            "Resend is not configured; set RESEND_API_KEY and RESEND_FROM_EMAIL"
+            "Mailjet is not configured; set MAILJET_API_KEY, MAILJET_API_SECRET, "
+            "MAILJET_FROM_EMAIL, and MAILJET_FROM_NAME"
         )
 
-    if "@" not in recipient or recipient.count("@") != 1:
+    if not isinstance(recipient, str) or not _EMAIL_PATTERN.fullmatch(recipient.strip()):
         raise EmailDeliveryError("Invalid notification recipient")
 
-    resend.api_key = RESEND_API_KEY
-
-    try:
-        resend.Emails.send(
+    payload = {
+        "Messages": [
             {
-                "from": RESEND_FROM_EMAIL,
-                "to": recipient,
-                "subject": subject,
-                "html": html.escape(body).replace("\n", "<br>"),
+                "From": {"Email": MAILJET_FROM_EMAIL, "Name": MAILJET_FROM_NAME},
+                "To": [{"Email": recipient.strip()}],
+                "Subject": subject,
+                "TextPart": body,
+                "HTMLPart": html.escape(body).replace("\n", "<br>"),
             }
+        ]
+    }
+    try:
+        response = requests.post(
+            MAILJET_SEND_URL,
+            auth=(MAILJET_API_KEY, MAILJET_API_SECRET),
+            json=payload,
+            timeout=MAILJET_TIMEOUT_SECONDS,
         )
-    except Exception as exc:
-        logger.exception("Email sending failed; exception type: %s", type(exc).__name__)
+    except requests.Timeout as exc:
+        logger.warning("Mailjet email request timed out; exception type: %s", type(exc).__name__)
+        raise EmailDeliveryError("Email delivery timed out") from exc
+    except requests.RequestException as exc:
+        logger.warning("Mailjet email request failed; exception type: %s", type(exc).__name__)
         raise EmailDeliveryError(
             f"Email delivery failed ({type(exc).__name__})"
         ) from exc
+
+    if not 200 <= response.status_code < 300:
+        logger.warning("Mailjet rejected email request with HTTP status %s", response.status_code)
+        raise EmailDeliveryError(
+            f"Mailjet rejected email request (HTTP {response.status_code})"
+        )
+
+    try:
+        result = response.json()
+    except ValueError as exc:
+        logger.warning("Mailjet returned malformed JSON for an email request")
+        raise EmailDeliveryError("Mailjet returned an invalid response") from exc
+
+    messages = result.get("Messages") if isinstance(result, dict) else None
+    if not isinstance(messages, list) or not messages:
+        logger.warning("Mailjet response did not include a message result")
+        raise EmailDeliveryError("Mailjet returned an invalid message result")
+
+    message = messages[0]
+    status = message.get("Status") if isinstance(message, dict) else None
+    if not isinstance(status, str) or status.lower() != "success":
+        logger.warning("Mailjet reported email status %r", status)
+        raise EmailDeliveryError("Mailjet did not accept the email")
+
+    logger.info("Mailjet accepted email request with status %s", status)
 
 
 def create_notification(
@@ -102,12 +148,13 @@ def create_notification(
     db.flush()
     try:
         send_email(recipient, subject, body)
-    except Exception as exc:
-        logger.exception("Resend API request failed")
+    except (EmailConfigurationError, EmailDeliveryError) as exc:
+        logger.warning("Mailjet API request failed: %s", type(exc).__name__)
         details = str(exc)
-        raise EmailDeliveryError(
-            f"Resend rejected email: {type(exc).__name__}: {details[:400]}"
-        ) from exc
+        notification.status = "failed"
+        notification.last_error = (
+            f"Mailjet rejected email: {type(exc).__name__}: {details[:400]}"
+        )
     else:
         notification.status = "sent"
         notification.sent_at = utcnow()

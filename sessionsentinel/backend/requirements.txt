@@ -7,4 +7,3 @@ python-dotenv
 requests
 pytest
 httpx
-resend

@@ -2,14 +2,14 @@
 
 ## Implemented detection rules R1-R6
 
-## Resend security notifications
+## Mailjet security notifications
 
 Security notifications are persisted in the backend `notifications` table and delivered
-through the Resend API. A provider outage does not undo a recorded event or bypass rate
+through the Mailjet REST API. A provider outage does not undo a recorded event or bypass rate
 limiting: the notification is marked `failed` and an administrator can retry it from the
 incident detail screen.
 
-Copy `backend/.env.example` to `backend/.env` and fill in the Resend values. The real
+Copy `backend/.env.example` to `backend/.env` and fill in the Mailjet values. The real
 `.env` file is ignored by Git.
 
 For Render, set these backend environment variables to the deployed frontend URLs
@@ -24,10 +24,16 @@ Set `VITE_API_URL=https://your-api.onrender.com` in both frontend services. Emai
 verification, device verification, and session-cancellation links use `APP_BASE_URL`;
 the verification page then sends the user to sign in on the deployed demo site.
 
-1. Create a Resend API key and set it as `RESEND_API_KEY`.
-2. Set `RESEND_FROM_EMAIL` to a verified Resend sender. For local testing, use
-   `onboarding@resend.dev`.
-3. Set `ADMIN_EMAIL` to the administrator inbox.
+1. Create a Mailjet API key and set `MAILJET_API_KEY` to its public API key.
+2. Set `MAILJET_API_SECRET` to its private API secret.
+3. Set `MAILJET_FROM_EMAIL` to an active, validated Mailjet sender and
+   `MAILJET_FROM_NAME=SessionSentinel`.
+4. Set `ADMIN_EMAIL` to the administrator inbox.
+
+Mailjet requires the sender address to be validated. Gmail, Outlook, and other free-email
+addresses may have delivery or spam problems and are not guaranteed to work for every
+recipient. These credentials belong only in the Render backend environment, not in either
+Vercel frontend.
 
 Start the backend from the repository's `sessionsentinel/backend` directory so the
 configured database and environment are used:
