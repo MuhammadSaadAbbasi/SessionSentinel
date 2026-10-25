@@ -24,6 +24,12 @@ Set `VITE_API_URL=https://your-api.onrender.com` in both frontend services. Emai
 verification, device verification, and session-cancellation links use `APP_BASE_URL`;
 the verification page then sends the user to sign in on the deployed demo site.
 
+For Vercel deployments, set each project's **Root Directory** to its frontend folder
+(`demo-site` or `admin-panel`) and deploy from the repository. The frontend folders
+include a `vercel.json` SPA rewrite so direct links such as `/verify-email?token=...`
+load the React application instead of returning Vercel `404 NOT_FOUND`. Set
+`VITE_API_URL` to the Render backend URL; do not leave it empty in production.
+
 1. Create a Mailjet API key and set `MAILJET_API_KEY` to its public API key.
 2. Set `MAILJET_API_SECRET` to its private API secret.
 3. Set `MAILJET_FROM_EMAIL` to an active, validated Mailjet sender and
