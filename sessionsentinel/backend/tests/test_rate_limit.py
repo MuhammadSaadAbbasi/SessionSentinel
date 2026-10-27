@@ -50,7 +50,7 @@ def test_admin_incidents_require_admin_and_include_investigation(client, login):
         "/login",
         json={
             "email": "admin@test.com",
-            "password": "Admin@12345",
+            "password": "answerable",
             "device_id": "admin-test-device",
         },
     )

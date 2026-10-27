@@ -93,7 +93,7 @@ def test_admin_response_and_audit_endpoints(client, login):
         "/login",
         json={
             "email": "admin@test.com",
-            "password": "Admin@12345",
+            "password": "answerable",
             "device_id": "admin-response",
         },
     ).json()["token"]

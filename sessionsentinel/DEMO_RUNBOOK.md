@@ -30,7 +30,7 @@ Test accounts:
 
 - User: `ali@test.com` / `Test@12345`
 - User: `sara@test.com` / `Test@12345`
-- Admin: `admin@test.com` / `Admin@12345`
+- Admin: `admin@test.com` / `answerable`
 
 ## Five-minute demonstration
 

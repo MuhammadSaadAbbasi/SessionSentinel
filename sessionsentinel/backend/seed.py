@@ -10,7 +10,7 @@ from security import hash_password
 
 # (email, password, role)
 TEST_USERS = [
-    ("admin@test.com", "Admin@12345", "admin"),
+    ("admin@test.com", "answerable", "admin"),
     ("ali@test.com",   "Test@12345",  "user"),
     ("sara@test.com",  "Test@12345",  "user"),
     ("ahmed@test.com", "Test@12345",  "user"),
