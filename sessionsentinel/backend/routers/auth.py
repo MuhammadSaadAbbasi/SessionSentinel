@@ -207,6 +207,11 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         # Message same: attacker ko pata na chale ke email maujood hai ya nahi.
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # Keep the cancellation email for the account's first sign-in (when there
+    # is no trusted-device baseline yet), then send it for a new device or IP.
+    has_trusted_devices = db.query(TrustedDevice).filter(
+        TrustedDevice.user_id == user.id
+    ).count() > 0
     r1_active, unfamiliar_device, unusual_location = inspect_success(
         db, user, body.device_id, ip
     )
@@ -268,23 +273,28 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     session = UserSession(user_id=user.id, token=token, device_id=body.device_id)
     db.add(session)
     db.flush()
-    _, cancellation_body = create_session_cancellation_request(db, user, session)
-    cancellation_email_sent = True
-    try:
-        send_email(
-            user.email,
-            "SessionSentinel: New sign-in session",
-            cancellation_body,
-        )
-    except (EmailConfigurationError, EmailDeliveryError):
-        cancellation_email_sent = False
-        db.add(Event(
-            user_id=user.id,
-            email_tried=user.email,
-            device_id=body.device_id,
-            ip=ip,
-            type="session_cancellation_email_failed",
-        ))
+    send_session_alert = (
+        not has_trusted_devices or unfamiliar_device or unusual_location
+    )
+    cancellation_email_sent = False
+    if send_session_alert:
+        _, cancellation_body = create_session_cancellation_request(db, user, session)
+        cancellation_email_sent = True
+        try:
+            send_email(
+                user.email,
+                "SessionSentinel: New sign-in session",
+                cancellation_body,
+            )
+        except (EmailConfigurationError, EmailDeliveryError):
+            cancellation_email_sent = False
+            db.add(Event(
+                user_id=user.id,
+                email_tried=user.email,
+                device_id=body.device_id,
+                ip=ip,
+                type="session_cancellation_email_failed",
+            ))
     if r1_active and (unfamiliar_device or unusual_location):
         session.revoked = True
         append(db, "high_risk_session_held", "system", f"user_id={user.id};device_id={body.device_id}")
