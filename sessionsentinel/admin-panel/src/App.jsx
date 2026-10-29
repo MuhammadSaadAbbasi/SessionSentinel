@@ -31,7 +31,26 @@ function handlePasswordChange(event) {
 
 function PasswordField({ value, onChange }) {
   const [visible, setVisible] = useState(false)
-  return <div className="password-field"><input type={visible ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={value} onChange={onChange} required /><button type="button" className="password-toggle" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>{visible ? 'Hide' : 'Show'}</button></div>
+  return (
+    <div className="password-field">
+      <input
+        type={visible ? 'text' : 'password'}
+        autoComplete="current-password"
+        placeholder="Enter your password"
+        value={value}
+        onChange={onChange}
+        required
+      />
+      <button
+        type="button"
+        className="password-toggle"
+        onClick={() => setVisible(!visible)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+      >
+        {visible ? 'Hide' : 'Show'}
+      </button>
+    </div>
+  )
 }
 
 function AdminLogin() {
