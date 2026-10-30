@@ -256,6 +256,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 idempotency_key=f"unusual-location:{user.id}:{incident.id}",
             )
     db.add(Event(user_id=user.id, email_tried=email, device_id=body.device_id, ip=ip, type="login_ok"))
+    db.flush()
     if db.query(TrustedDevice).filter(
         TrustedDevice.user_id == user.id
     ).count() == 0:
@@ -272,7 +273,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 "\nR4: R1 sequence followed by a successful login from an "
                 "unfamiliar device or location"
             )
-    elif r1_active and r2_triggered(db, user.id):
+    if r1_active and r2_triggered(db, user.id):
         incident, _ = record_r1_incident(db, user)
         if incident is not None and "\nR2:" not in incident.explanation:
             incident.explanation += (

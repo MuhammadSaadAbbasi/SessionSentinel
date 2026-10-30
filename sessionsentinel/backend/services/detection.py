@@ -274,7 +274,7 @@ def r2_triggered(db: Session, user_id: int) -> bool:
         .filter(
             Event.user_id == user_id,
             Event.type == "login_ok",
-            Event.created_at >= failures[-R1_HIGH_FAILS].created_at,
+            Event.created_at > failures[-1].created_at,
         )
         .first()
         is not None

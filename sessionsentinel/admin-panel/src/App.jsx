@@ -12,9 +12,15 @@ const ruleNames = {
   R6: 'Shared IP',
 }
 
-function ruleFor(explanation = '') {
-  const match = explanation.match(/\bR[1-6]\b/)
-  return match ? match[0] : 'Review'
+function rulesFor(explanation = '') {
+  const matches = [...new Set(explanation.match(/\bR[1-6]\b/g) || [])]
+  return matches.length ? matches : ['Review']
+}
+
+function ruleSummary(explanation = '') {
+  return rulesFor(explanation)
+    .map((rule) => ruleNames[rule] ? `${rule} · ${ruleNames[rule]}` : rule)
+    .join(' · ')
 }
 
 function formatDate(value) {
@@ -112,8 +118,7 @@ function Dashboard() {
 }
 
 function IncidentRow({ incident }) {
-  const rule = ruleFor(incident.explanation)
-  return <Link className="incident-row" to={`/incidents/${incident.id}`}><span className={`incident-indicator ${incident.severity}`} /><div className="incident-row-main"><strong>{incident.email || 'Shared infrastructure'}</strong><span>{rule} · {ruleNames[rule] || 'Security review'}</span></div><Badge value={incident.severity} /><span className="row-date">{formatDate(incident.created_at)}</span></Link>
+  return <Link className="incident-row" to={`/incidents/${incident.id}`}><span className={`incident-indicator ${incident.severity}`} /><div className="incident-row-main"><strong>{incident.email || 'Shared infrastructure'}</strong><span>{ruleSummary(incident.explanation)}</span></div><Badge value={incident.severity} /><span className="row-date">{formatDate(incident.created_at)}</span></Link>
 }
 
 function Incidents() {
@@ -155,7 +160,7 @@ function IncidentDetail() {
     setMessage(`Notification ${result.status}.`)
     setIncident({ ...incident, notification_status: incident.notification_status.map((item) => item.id === notificationId ? { ...item, status: result.status, attempts: result.attempts } : item) })
   }
-  return <Layout><main className="page">{error && <p className="error" role="alert">{error}</p>}{!incident && !error && <p className="empty-state">Loading incident…</p>}{incident && <><Link className="back-link" to="/incidents">← Back to incidents</Link><div className="detail-heading"><div><div className="rule-label"><span className="rule-code">{ruleFor(incident.explanation)}</span>{ruleNames[ruleFor(incident.explanation)] || 'Security rule'}</div><h1>Incident #{incident.id}</h1><p className="muted">{incident.email || 'Shared infrastructure'} · Reported {formatDate(incident.created_at)}</p></div><div className="detail-badges"><Badge value={incident.severity} /><Badge value={incident.status} /></div></div>{message && <p className="success" role="status">{message}</p>}<div className="actions"><button onClick={() => updateStatus('investigating')}>Investigate</button><button className="button-secondary" onClick={() => updateStatus('contained')}>Contain</button><button className="button-quiet" onClick={() => updateStatus('resolved')}>Resolve</button></div><div className="detail-grid"><div><section className="panel"><div className="section-heading"><h3>Assessment</h3><span className="assessment-dot" /></div><pre>{incident.explanation}</pre></section><section className="panel"><h3>Evidence collected</h3><ul className="evidence-list">{incident.evidence.map((item) => <li key={item}><span>✓</span>{item}</li>)}</ul><div className="recommendation"><strong>Recommended response</strong><p>{incident.recommended_action}</p></div></section>{incident.notification_status?.length > 0 && <section className="panel"><h3>Email notifications</h3><div className="notification-list">{incident.notification_status.map((item) => <div className="notification-row" key={item.id}><div><strong>{item.kind.replaceAll('_', ' ')}</strong><span>{item.status} · {item.attempts} attempt{item.attempts === 1 ? '' : 's'}</span>{item.last_error && <small>{item.last_error}</small>}</div>{item.status === 'failed' && <button className="button-secondary" onClick={() => retryNotification(item.id)}>Retry</button>}</div>)}</div></section>}</div><section className="panel"><h3>Event timeline</h3><ol className="timeline">{incident.timeline.map((event) => <li key={event.id}><span className="timeline-dot" /><div><strong>{event.type.replaceAll('_', ' ')}</strong><span>{formatDate(event.created_at)}</span><small>{event.device_id}{event.ip ? ` · ${event.ip}` : ''}</small></div></li>)}</ol></section></div></>}</main></Layout>
+  return <Layout><main className="page">{error && <p className="error" role="alert">{error}</p>}{!incident && !error && <p className="empty-state">Loading incident…</p>}{incident && <><Link className="back-link" to="/incidents">← Back to incidents</Link><div className="detail-heading"><div><div className="rule-label">{rulesFor(incident.explanation).map((rule) => <span key={rule}><span className="rule-code">{rule}</span> {ruleNames[rule] || 'Security review'}</span>)}</div><h1>Incident #{incident.id}</h1><p className="muted">{incident.email || 'Shared infrastructure'} · Reported {formatDate(incident.created_at)}</p></div><div className="detail-badges"><Badge value={incident.severity} /><Badge value={incident.status} /></div></div>{message && <p className="success" role="status">{message}</p>}<div className="actions"><button onClick={() => updateStatus('investigating')}>Investigate</button><button className="button-secondary" onClick={() => updateStatus('contained')}>Contain</button><button className="button-quiet" onClick={() => updateStatus('resolved')}>Resolve</button></div><div className="detail-grid"><div><section className="panel"><div className="section-heading"><h3>Assessment</h3><span className="assessment-dot" /></div><pre>{incident.explanation}</pre></section><section className="panel"><h3>Evidence collected</h3><ul className="evidence-list">{incident.evidence.map((item) => <li key={item}><span>✓</span>{item}</li>)}</ul><div className="recommendation"><strong>Recommended response</strong><p>{incident.recommended_action}</p></div></section>{incident.notification_status?.length > 0 && <section className="panel"><h3>Email notifications</h3><div className="notification-list">{incident.notification_status.map((item) => <div className="notification-row" key={item.id}><div><strong>{item.kind.replaceAll('_', ' ')}</strong><span>{item.status} · {item.attempts} attempt{item.attempts === 1 ? '' : 's'}</span>{item.last_error && <small>{item.last_error}</small>}</div>{item.status === 'failed' && <button className="button-secondary" onClick={() => retryNotification(item.id)}>Retry</button>}</div>)}</div></section>}</div><section className="panel"><h3>Event timeline</h3><ol className="timeline">{incident.timeline.map((event) => <li key={event.id}><span className="timeline-dot" /><div><strong>{event.type.replaceAll('_', ' ')}</strong><span>{formatDate(event.created_at)}</span><small>{event.device_id}{event.ip ? ` · ${event.ip}` : ''}</small></div></li>)}</ol></section></div></>}</main></Layout>
 }
 
 function AuditLog() {
