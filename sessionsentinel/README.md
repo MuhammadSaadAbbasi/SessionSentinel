@@ -69,7 +69,7 @@ revokes existing session tokens.
   with the active failure sequence.
 - Unfamiliar devices and previously unseen login IPs create R3 incidents. R4 holds a
   session when either follows an R1 sequence.
-- R5 unauthorized reports revoke all sessions, require a password reset, and send a local alert.
+- R5 unauthorized reports revoke all sessions, require a verified password reset, and alert the account owner.
 - R6 identifies suspicious activity across more than three accounts sharing an IP,
   records affected accounts and timestamps, and applies IP-level rate limiting.
 - Admins can view filtered incidents and an incident detail timeline at `/admin/incidents`.
@@ -80,7 +80,7 @@ revokes existing session tokens.
 - Admins can revoke a session through `/admin/sessions/{id}/revoke`; the token is rejected on the next request.
 - Users can report an event through `/me/report` with `is_me: false`; all active sessions are revoked and a high-severity incident is created.
 - Users can confirm an event with `is_me: true`; the device is trusted and the related open new-device incident is resolved.
-- Unauthorized reports require a password reset through `POST /reset-password`; changing the password revokes all existing sessions.
+- Forgot password sends a one-use reset link through `POST /forgot-password`; `POST /reset-password` accepts only its valid token. Changing the password revokes all existing sessions.
 - R1 escalation and account locks are audited, and R1 plus a successful new-device or unusual-location
   login becomes a high-risk held session.
 - Security actions append entries to the SHA-256 hash-chained `audit_log` table.

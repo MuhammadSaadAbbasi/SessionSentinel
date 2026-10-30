@@ -10,12 +10,14 @@ import seed
 from database import Base, engine
 from main import app
 import services.email_service as email_service
+import routers.auth as auth_router
 
 
 @pytest.fixture(autouse=True)
 def fresh_db(monkeypatch):
     Base.metadata.drop_all(bind=engine)
     monkeypatch.setattr(email_service, "send_email", lambda recipient, subject, body: None)
+    monkeypatch.setattr(auth_router, "send_email", lambda recipient, subject, body: None)
     seed.main()                       # 6 test users
     yield
     Base.metadata.drop_all(bind=engine)

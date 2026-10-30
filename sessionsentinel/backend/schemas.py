@@ -28,8 +28,12 @@ class UserReportRequest(BaseModel):
     is_me: bool
 
 
-class PasswordResetRequest(BaseModel):
+class ForgotPasswordRequest(BaseModel):
     email: str
+
+
+class PasswordResetRequest(BaseModel):
+    token: str
     new_password: str
 
 

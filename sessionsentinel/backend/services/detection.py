@@ -39,12 +39,23 @@ def r1_triggered(db: Session, user_id: int | None, email: str) -> bool:
 
 
 def account_retry_after(db: Session, user_id: int, email: str) -> int:
-    failures = failed_logins(db, user_id, email)
+    # The R1 detection window is intentionally short, but an account lock must
+    # outlive that window. Count failures across the full lock duration here.
+    failures = (
+        db.query(Event)
+        .filter(
+            Event.user_id == user_id,
+            Event.type == "login_fail",
+            Event.created_at >= _window_start(R1_LOCK_SECONDS),
+        )
+        .order_by(Event.created_at.asc())
+        .all()
+    )
     if len(failures) < R1_CRITICAL_FAILS:
         return 0
     from models import utcnow
 
-    elapsed = int((utcnow() - failures[-R1_CRITICAL_FAILS].created_at).total_seconds())
+    elapsed = int((utcnow() - failures[-1].created_at).total_seconds())
     return max(1, R1_LOCK_SECONDS - elapsed)
 
 

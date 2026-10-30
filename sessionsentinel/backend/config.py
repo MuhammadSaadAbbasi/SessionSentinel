@@ -9,8 +9,7 @@ from dotenv import load_dotenv     # .env file parhne wala package (python-doten
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-# Database connection URL. Render provides a PostgreSQL URL through DATABASE_URL.
-# SQLite remains the local fallback when no environment variable is set.
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./sessionsentinel.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
@@ -29,7 +28,7 @@ R1_WINDOW_SECONDS = int(os.getenv("R1_WINDOW_SECONDS", "120"))
 R1_CORRELATION_SECONDS = int(
     os.getenv("R1_CORRELATION_SECONDS", str(R1_WINDOW_SECONDS))
 )
-R1_LOCK_SECONDS = int(os.getenv("R1_LOCK_SECONDS", str(30 * 60)))
+R1_LOCK_SECONDS = int(os.getenv("R1_LOCK_SECONDS", "120"))
 R6_ACCOUNT_THRESHOLD = int(os.getenv("R6_ACCOUNT_THRESHOLD", "3"))
 R6_IP_THROTTLE_SECONDS = int(os.getenv("R6_IP_THROTTLE_SECONDS", str(15 * 60)))
 
@@ -50,4 +49,7 @@ EMAIL_VERIFICATION_TTL_SECONDS = int(
 )
 SESSION_CANCELLATION_TTL_SECONDS = int(
     os.getenv("SESSION_CANCELLATION_TTL_SECONDS", str(30 * 60))
+)
+PASSWORD_RESET_TTL_SECONDS = int(
+    os.getenv("PASSWORD_RESET_TTL_SECONDS", str(30 * 60))
 )

@@ -56,7 +56,7 @@ def report(
             user_id=user.id,
             severity="high",
             status="open",
-            explanation=f"User reported event {event.id} as unauthorized",
+            explanation=f"R5: user reported event {event.id} as unauthorized",
         )
         db.add(incident)
         append(db, "unauthorized_activity_reported", user.email, f"event_id={event.id}")

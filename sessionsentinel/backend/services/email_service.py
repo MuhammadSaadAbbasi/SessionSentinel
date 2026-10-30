@@ -9,6 +9,7 @@ from datetime import timedelta
 from urllib.parse import quote
 
 import requests
+from sqlalchemy.exc import IntegrityError
 
 from config import (
     ADMIN_EMAIL,
@@ -17,6 +18,7 @@ from config import (
     MAILJET_API_SECRET,
     MAILJET_FROM_EMAIL,
     MAILJET_FROM_NAME,
+    PASSWORD_RESET_TTL_SECONDS,
     VERIFICATION_TTL_SECONDS,
     EMAIL_VERIFICATION_TTL_SECONDS,
     SESSION_CANCELLATION_TTL_SECONDS,
@@ -144,8 +146,20 @@ def create_notification(
         idempotency_key=idempotency_key,
         status="pending",
     )
-    db.add(notification)
-    db.flush()
+    try:
+        # Another request may insert this key after the lookup above. Isolate
+        # the insert in a savepoint so that a uniqueness race doesn't poison
+        # the login transaction or turn the request into a 500.
+        with db.begin_nested():
+            db.add(notification)
+            db.flush()
+    except IntegrityError:
+        existing = db.query(Notification).filter(
+            Notification.idempotency_key == idempotency_key
+        ).first()
+        if existing is None:
+            raise
+        return existing
     try:
         send_email(recipient, subject, body)
     except (EmailConfigurationError, EmailDeliveryError) as exc:
@@ -254,6 +268,17 @@ def create_email_verification_request(db, user: User):
         "If you did not create this account, ignore this message."
     )
     return request, body
+
+
+def password_reset_body(user: User, raw_token: str) -> str:
+    link = f"{APP_BASE_URL.rstrip('/')}/reset-password?token={quote(raw_token)}"
+    return (
+        "SessionSentinel Password Reset\n\n"
+        f"A password reset was requested for {user.email}.\n\n"
+        f"Choose a new password using this link (valid for "
+        f"{PASSWORD_RESET_TTL_SECONDS // 60} minutes):\n{link}\n\n"
+        "If you did not request this, ignore this email. Your password will not change."
+    )
 
 
 def create_session_cancellation_request(db, user: User, session: UserSession):

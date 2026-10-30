@@ -2,16 +2,19 @@
 # /login aur /logout.
 import hashlib
 import logging
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
+from config import PASSWORD_RESET_TTL_SECONDS
 from deps import get_current_session
 from models import (
     EmailVerificationRequest,
     Event,
     Incident,
+    PasswordResetToken,
     SessionCancellationRequest,
     TrustedDevice,
     User,
@@ -19,7 +22,13 @@ from models import (
     VerificationRequest,
     utcnow,
 )
-from schemas import LoginRequest, PasswordResetRequest, SignupRequest, TokenRequest
+from schemas import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    PasswordResetRequest,
+    SignupRequest,
+    TokenRequest,
+)
 from security import hash_password, new_token, verify_password
 from services.audit_log import append
 from services.email_service import (
@@ -33,6 +42,7 @@ from services.email_service import (
     EmailDeliveryError,
     critical_login_body,
     failed_login_body,
+    password_reset_body,
     unusual_location_body,
 )
 from services.detection import (
@@ -402,17 +412,57 @@ def logout(s: UserSession = Depends(get_current_session), db: Session = Depends(
     return {"status": "ok"}
 
 
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email.strip().lower()).first()
+    if user is not None and user.status == "active":
+        now = utcnow()
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
+        raw_token = new_token()
+        reset = PasswordResetToken(
+            user_id=user.id,
+            token_hash=hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+            expires_at=now + timedelta(seconds=PASSWORD_RESET_TTL_SECONDS),
+        )
+        db.add(reset)
+        db.flush()
+        try:
+            # Do not persist the raw reset link in the notifications table.
+            send_email(
+                user.email,
+                "SessionSentinel: Reset your password",
+                password_reset_body(user, raw_token),
+            )
+        except (EmailConfigurationError, EmailDeliveryError) as exc:
+            logger.warning("Password reset email could not be sent (%s)", type(exc).__name__)
+            reset.used_at = now
+        db.commit()
+    return {"status": "ok", "message": "If the account exists, a reset link has been sent."}
+
+
 @router.post("/reset-password")
 def reset_password(body: PasswordResetRequest, db: Session = Depends(get_db)):
     if len(body.new_password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
-    user = db.query(User).filter(User.email == body.email.strip().lower()).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="Account not found")
+    token_hash = hashlib.sha256(body.token.encode("utf-8")).hexdigest()
+    reset = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token_hash == token_hash,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.expires_at > utcnow(),
+    ).first()
+    if reset is None:
+        raise HTTPException(status_code=400, detail="Password reset link is invalid or expired")
+    user = db.get(User, reset.user_id)
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=400, detail="Password reset link is invalid or expired")
     user.password_hash = hash_password(body.new_password)
     user.password_reset_required = False
+    reset.used_at = utcnow()
     for session in db.query(UserSession).filter(UserSession.user_id == user.id).all():
         session.revoked = True
-    append(db, "password_changed", "user", f"user_id={user.id}")
+    append(db, "password_changed", user.email, f"user_id={user.id};via=reset_token")
     db.commit()
     return {"status": "ok"}

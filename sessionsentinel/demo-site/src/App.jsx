@@ -23,12 +23,17 @@ function PasswordField({ value, onChange }) {
 
 function Login() {
   const navigate = useNavigate()
+  const resetToken = new URLSearchParams(window.location.search).get('token') || ''
   const [email, setEmail] = useState(() => new URLSearchParams(window.location.search).get('email') || 'ali@test.com')
-  const [password, setPassword] = useState('Test@12345')
-  const [error, setError] = useState(() => new URLSearchParams(window.location.search).get('verified') === '1'
-    ? 'Email verified. Sign in to open your account.'
-    : '')
-  const [mode, setMode] = useState('login')
+  const [password, setPassword] = useState(() => resetToken ? '' : 'Test@12345')
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('verified') === '1') return 'Email verified. Sign in to open your account.'
+    if (params.get('reset') === '1') return 'Password reset. Sign in with the new password.'
+    return ''
+  })
+  const [mode, setMode] = useState(resetToken ? 'reset' : 'login')
+  const [resetRequested, setResetRequested] = useState(false)
 
   async function submit(event) {
     event.preventDefault()
@@ -61,17 +66,25 @@ function Login() {
   async function resetPassword(event) {
     event.preventDefault()
     setError('')
-    const response = await api('/reset-password', {
+    const response = await api(resetToken ? '/reset-password' : '/forgot-password', {
       method: 'POST',
-      body: JSON.stringify({ email, new_password: password }),
+      body: JSON.stringify(resetToken
+        ? { token: resetToken, new_password: password }
+        : { email }),
     })
+    const body = await response.json()
     if (!response.ok) {
-      const body = await response.json()
-      setError(body.detail || 'Could not reset password')
+      setError(body.detail || 'Could not process password reset')
+      return
+    }
+    if (!resetToken) {
+      setResetRequested(true)
+      setError(body.message)
       return
     }
     setMode('login')
     setError('Password reset. Sign in with the new password.')
+    navigate('/?reset=1', { replace: true })
   }
 
   const resetMode = mode === 'reset'
@@ -85,17 +98,17 @@ function Login() {
       <div className="auth-mobile-brand"><span className="brand-mark">S</span> SessionSentinel</div>
       <p className="eyebrow">{resetMode ? 'ACCOUNT RECOVERY' : mode === 'signup' ? 'GET STARTED' : 'SECURE SIGN IN'}</p>
       <h1>{resetMode ? 'Reset your password' : mode === 'signup' ? 'Create your account' : 'Welcome back'}</h1>
-      <p className="auth-description">{resetMode ? 'Choose a new password to restore access to your account.' : mode === 'signup' ? 'Create an account to keep your sign-in activity in one place.' : 'Sign in to review your account and security activity.'}</p>
+      <p className="auth-description">{resetMode ? resetToken ? 'Choose a new password using your secure reset link.' : resetRequested ? 'Check your email for a secure password reset link.' : 'We’ll email you a secure link to reset your password.' : mode === 'signup' ? 'Create an account to keep your sign-in activity in one place.' : 'Sign in to review your account and security activity.'}</p>
       <form onSubmit={resetMode ? resetPassword : submit}>
-        <label>Email address<input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-        <label>{resetMode ? 'New password' : 'Password'}<PasswordField value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-        {!resetMode && mode === 'login' && <div className="auth-form-row"><label className="remember-label"><input type="checkbox" /> Remember this device</label><button type="button" className="auth-text-button" onClick={() => setMode('reset')}>Forgot password?</button></div>}
-        <button className="auth-submit" type="submit">{resetMode ? 'Save new password' : mode === 'signup' ? 'Create account' : 'Sign in securely'}<span>→</span></button>
+        {(!resetMode || (!resetToken && !resetRequested)) && <label>Email address<input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>}
+        {(!resetMode || resetToken) && <label>{resetMode ? 'New password' : 'Password'}<PasswordField value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
+        {!resetMode && mode === 'login' && <div className="auth-form-row"><label className="remember-label"><input type="checkbox" /> Remember this device</label><button type="button" className="auth-text-button" onClick={() => { setError(''); setResetRequested(false); setPassword(''); setMode('reset') }}>Forgot password?</button></div>}
+        {!resetMode || resetToken || !resetRequested ? <button className="auth-submit" type="submit">{resetMode ? resetToken ? 'Save new password' : 'Send reset link' : mode === 'signup' ? 'Create account' : 'Sign in securely'}<span>→</span></button> : null}
       </form>
-      {error && <p className={`auth-message ${error.startsWith('Account created') || error.startsWith('Password reset') ? 'success' : 'error'}`} role="alert">{error}</p>}
+      {error && <p className={`auth-message ${error.startsWith('Account created') || error.startsWith('Password reset') || error.startsWith('If the account exists') ? 'success' : 'error'}`} role="alert">{error}</p>}
       {!resetMode && mode === 'login' && <><div className="auth-divider"><span>DEMO ACCESS</span></div><div className="demo-credentials"><strong>Seeded user account</strong><span>ali@test.com <i>·</i> Test@12345</span></div><p className="auth-switch">New to SessionSentinel? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('signup') }}>Create an account</button></p></>}
       {!resetMode && mode === 'signup' && <p className="auth-switch">Already have an account? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login') }}>Sign in</button></p>}
-      {resetMode && <p className="auth-switch"><button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login') }}>← Back to sign in</button></p>}
+      {resetMode && <p className="auth-switch"><button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login'); setResetRequested(false); navigate('/') }}>← Back to sign in</button></p>}
     </section></main>
   </div>
 }
@@ -173,6 +186,7 @@ function ProtectedRoutes() {
 export default function App() {
   return <BrowserRouter><Routes>
     <Route path="/" element={<Login />} />
+    <Route path="/reset-password" element={<Login />} />
     <Route path="/verify-email" element={<EmailAction action="/verify-email" />} />
     <Route path="/verify-device" element={<EmailAction action="/verify-device" />} />
     <Route path="/cancel-session" element={<EmailAction action="/cancel-session" />} />
