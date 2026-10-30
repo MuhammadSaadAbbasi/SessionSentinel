@@ -91,10 +91,10 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     except (EmailConfigurationError, EmailDeliveryError) as exc:
         db.rollback()
         logger.error("Signup verification email failed: %s", exc)
-        # raise HTTPException(status_code=503, detail="Verification email could not be sent") from exc
         raise HTTPException(
-        status_code=503,
-        detail=f"DEBUG: {type(exc).__name__}: {str(exc)[:250]}")
+            status_code=503,
+            detail="Verification email could not be sent. Please try again later.",
+        ) from exc
     db.commit()
     return {
         "status": "pending",

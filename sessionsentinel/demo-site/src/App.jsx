@@ -34,6 +34,8 @@ function Login() {
   })
   const [mode, setMode] = useState(resetToken ? 'reset' : 'login')
   const [resetRequested, setResetRequested] = useState(false)
+  const [signupPending, setSignupPending] = useState(false)
+  const [signupMessage, setSignupMessage] = useState('')
 
   async function submit(event) {
     event.preventDefault()
@@ -55,8 +57,8 @@ function Login() {
       return
     }
     if (mode === 'signup') {
-      setError('Account created. Check your email to verify it before signing in.')
-      setMode('login')
+      setSignupMessage(body.message || 'Check your email for a verification link before signing in.')
+      setSignupPending(true)
       return
     }
     localStorage.setItem('token', body.token)
@@ -98,7 +100,8 @@ function Login() {
       <div className="auth-mobile-brand"><span className="brand-mark">S</span> SessionSentinel</div>
       <p className="eyebrow">{resetMode ? 'ACCOUNT RECOVERY' : mode === 'signup' ? 'GET STARTED' : 'SECURE SIGN IN'}</p>
       <h1>{resetMode ? 'Reset your password' : mode === 'signup' ? 'Create your account' : 'Welcome back'}</h1>
-      <p className="auth-description">{resetMode ? resetToken ? 'Choose a new password using your secure reset link.' : resetRequested ? 'Check your email for a secure password reset link.' : 'We’ll email you a secure link to reset your password.' : mode === 'signup' ? 'Create an account to keep your sign-in activity in one place.' : 'Sign in to review your account and security activity.'}</p>
+      <p className="auth-description">{signupPending ? 'Your account is waiting for email verification.' : resetMode ? resetToken ? 'Choose a new password using your secure reset link.' : resetRequested ? 'Check your email for a secure password reset link.' : 'We’ll email you a secure link to reset your password.' : mode === 'signup' ? 'Create an account to keep your sign-in activity in one place.' : 'Sign in to review your account and security activity.'}</p>
+      {signupPending ? <div className="signup-verification-prompt" role="status"><p className="auth-message success">{signupMessage}</p><p>Open the verification email sent to <strong>{email}</strong> and click its link. You cannot sign in until the email is verified. After verification, you’ll return here to sign in.</p><button type="button" className="auth-text-button" onClick={() => { setSignupPending(false); setMode('login'); setError('') }}>Back to sign in</button></div> : <>
       <form onSubmit={resetMode ? resetPassword : submit}>
         {(!resetMode || (!resetToken && !resetRequested)) && <label>Email address<input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>}
         {(!resetMode || resetToken) && <label>{resetMode ? 'New password' : 'Password'}<PasswordField value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
@@ -109,6 +112,7 @@ function Login() {
       {!resetMode && mode === 'login' && <><div className="auth-divider"><span>DEMO ACCESS</span></div><div className="demo-credentials"><strong>Seeded user account</strong><span>ali@test.com <i>·</i> Test@12345</span></div><p className="auth-switch">New to SessionSentinel? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('signup') }}>Create an account</button></p></>}
       {!resetMode && mode === 'signup' && <p className="auth-switch">Already have an account? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login') }}>Sign in</button></p>}
       {resetMode && <p className="auth-switch"><button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login'); setResetRequested(false); navigate('/') }}>← Back to sign in</button></p>}
+      </>}
     </section></main>
   </div>
 }
