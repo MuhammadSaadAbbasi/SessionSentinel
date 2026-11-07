@@ -22,12 +22,12 @@ from tkinter import ttk, messagebox
 import requests
 
 API_URL = "https://sessionsentinel-w2hu.onrender.com/login"
-DEMO_EMAIL = "saadrehan315@gmail.com"
+DEMO_EMAIL = "saadrehan88@gmail.com"
 DEMO_EMAILS = ["ali@test.com", "sara@test.com"]
 DEVICE_ID = "sessionsentinel-attacker-lab"
 WRONG_PASSWORDS = [
     "DefinitelyWrong-01!", "DefinitelyWrong-02!", "DefinitelyWrong-03!",
-    "DefinitelyWrong-04!", "DefinitelyWrong-05!", "DefinitelyWrong-06!",
+    "DefinitelyWrong-04!", "Test@12345", "DefinitelyWrong-06!",
     "DefinitelyWrong-07!", "DefinitelyWrong-08!", "DefinitelyWrong-09!",
     "DefinitelyWrong-10!",
 ]
