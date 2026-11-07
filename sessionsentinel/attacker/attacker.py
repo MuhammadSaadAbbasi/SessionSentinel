@@ -21,8 +21,8 @@ from tkinter import ttk, messagebox
 
 import requests
 
-API_URL = "http://127.0.0.1:8000/login"
-DEMO_EMAIL = "ali@test.com"
+API_URL = "https://sessionsentinel-w2hu.onrender.com/login"
+DEMO_EMAIL = "saadrehan315@gmail.com"
 DEMO_EMAILS = ["ali@test.com", "sara@test.com"]
 DEVICE_ID = "sessionsentinel-attacker-lab"
 WRONG_PASSWORDS = [
