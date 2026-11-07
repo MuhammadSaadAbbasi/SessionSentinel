@@ -66,9 +66,9 @@ def report(
             user_id=user.id,
             incident_id=incident.id,
             kind="unauthorized_activity",
-            subject="SessionSentinel: Account Protection Activated",
+            subject="BreachTitan: Account Protection Activated",
             body=(
-                "SessionSentinel Account Protection\n\n"
+                "BreachTitan Account Protection\n\n"
                 "Event: Unauthorized activity reported\n"
                 f"Account: {user.email}\n"
                 f"Detected: {_iso(event.created_at)}\n\n"

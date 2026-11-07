@@ -1,4 +1,4 @@
-# SessionSentinel: 7-Day Milestone Plan (3 members, kaam ek saath, conflict ke baghair)
+# BreachTitan: 7-Day Milestone Plan (3 members, kaam ek saath, conflict ke baghair)
 
 Roles: **Member 1** = `demo-site/` + `attacker/` (+ `notifier.py` on Day 5). **Member 2** = `admin-panel/`. **Member 3** = `backend/` (baqi sab files).
 Sab AI se code likhwa rahe hain (vibe coding), is liye har milestone ke end par **"Done when"** check chalana zaroori hai. Jo chala nahi, wo bana nahi.

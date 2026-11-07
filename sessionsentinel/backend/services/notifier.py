@@ -6,4 +6,4 @@ For now alerts are deliberately visible in the backend console.
 
 
 def notify(subject: str, message: str) -> None:
-    print(f"[SessionSentinel alert] {subject}: {message}", flush=True)
+    print(f"[BreachTitan alert] {subject}: {message}", flush=True)

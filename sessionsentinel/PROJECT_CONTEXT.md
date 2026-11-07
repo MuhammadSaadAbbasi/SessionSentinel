@@ -1,9 +1,9 @@
-# SessionSentinel: Project Context (for AI assistants and teammates)
+# BreachTitan: Project Context (for AI assistants and teammates)
 
 Read this file fully before writing any code. Follow it exactly. If something is unclear, ask instead of guessing.
 
 ## 1. What we are building
-SessionSentinel is a small information-security system. It detects suspicious login activity on our own demo website, investigates it with a rule-based agent, applies real corrective actions (rate limiting, session revocation, email alert), and keeps a tamper-evident (hash-chained) audit log.
+BreachTitan is a small information-security system. It detects suspicious login activity on our own demo website, investigates it with a rule-based agent, applies real corrective actions (rate limiting, session revocation, email alert), and keeps a tamper-evident (hash-chained) audit log.
 
 Three parts, one shared backend:
 - **backend/**: FastAPI + SQLite. ALL security logic lives here.

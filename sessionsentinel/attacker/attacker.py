@@ -1,5 +1,5 @@
 """
-SessionSentinel - Local Attack Lab
+BreachTitan - Local Attack Lab
 A visual, bounded demonstration against seeded local test accounts only.
 
 Requirements:

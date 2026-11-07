@@ -38,7 +38,7 @@ if "users" in inspect(engine).get_table_names():
                 text("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'")
             )
 
-app = FastAPI(title="SessionSentinel")             # asli application object
+app = FastAPI(title="BreachTitan")             # asli application object
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS,

@@ -85,7 +85,7 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     try:
         send_email(
             user.email,
-            "SessionSentinel: Verify your email address",
+            "BreachTitan: Verify your email address",
             verification_body,
         )
     except (EmailConfigurationError, EmailDeliveryError) as exc:
@@ -144,7 +144,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                         user_id=user.id,
                         incident_id=incident.id,
                         kind="r1_high",
-                        subject="SessionSentinel Security Alert: Repeated Failed Login Attempts",
+                        subject="BreachTitan Security Alert: Repeated Failed Login Attempts",
                         body=failed_login_body(user, count, incident.severity),
                         idempotency_key=f"r1-high:{user.id}:{incident.id}",
                     )
@@ -155,7 +155,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                         user_id=user.id,
                         incident_id=incident.id,
                         kind="r1_critical",
-                        subject="SessionSentinel Critical Alert: Temporary Account Restriction",
+                        subject="BreachTitan Critical Alert: Temporary Account Restriction",
                         body=critical_login_body(user, count),
                         idempotency_key=f"r1-critical:{user.id}:{incident.id}",
                     )
@@ -166,9 +166,9 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                             recipient=recipient,
                             incident_id=incident.id,
                             kind="r1_critical_admin",
-                            subject="SessionSentinel Admin Alert: Critical Login Activity",
+                            subject="BreachTitan Admin Alert: Critical Login Activity",
                             body=(
-                                "SessionSentinel Admin Alert\n\n"
+                                "BreachTitan Admin Alert\n\n"
                                 f"Account: {user.email}\n"
                                 f"Detected: {utcnow().isoformat()}Z\n"
                                 "A critical failed-login threshold was crossed and temporary "
@@ -186,9 +186,9 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                         recipient=recipient,
                         incident_id=shared_incident.id,
                         kind="r6_admin",
-                        subject="SessionSentinel Admin Alert: Shared-IP Activity",
+                        subject="BreachTitan Admin Alert: Shared-IP Activity",
                         body=(
-                            "SessionSentinel Admin Alert\n\n"
+                            "BreachTitan Admin Alert\n\n"
                             "Event: Shared-IP suspicious activity\n"
                             f"Detected: {utcnow().isoformat()}Z\n"
                             "Review the admin dashboard for affected account IDs and timestamps.\n\n"
@@ -234,7 +234,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
             recipient=user.email,
             user_id=user.id,
             kind="new_device_verification",
-            subject="SessionSentinel: Verify New Device Sign-In",
+            subject="BreachTitan: Verify New Device Sign-In",
             body=verification_body,
             idempotency_key=f"new-device:{user.id}:{body.device_id}:{verification.id}",
         )
@@ -251,7 +251,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
                 user_id=user.id,
                 incident_id=incident.id,
                 kind="unusual_location",
-                subject="SessionSentinel: Review Unusual Login Location",
+                subject="BreachTitan: Review Unusual Login Location",
                 body=unusual_location_body(user, ip),
                 idempotency_key=f"unusual-location:{user.id}:{incident.id}",
             )
@@ -294,7 +294,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         try:
             send_email(
                 user.email,
-                "SessionSentinel: New sign-in session",
+                "BreachTitan: New sign-in session",
                 cancellation_body,
             )
         except (EmailConfigurationError, EmailDeliveryError):
@@ -345,9 +345,9 @@ def verify_device(token: str = Query(min_length=20), db: Session = Depends(get_d
         recipient=user.email,
         user_id=user.id,
         kind="device_verified",
-        subject="SessionSentinel: Device Verification Successful",
+        subject="BreachTitan: Device Verification Successful",
         body=(
-            "SessionSentinel Security Update\n\n"
+            "BreachTitan Security Update\n\n"
             "Event: New device verified successfully\n"
             f"Account: {user.email}\n"
             f"Verified: {utcnow().isoformat()}Z\n"
@@ -434,7 +434,7 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
             # Do not persist the raw reset link in the notifications table.
             send_email(
                 user.email,
-                "SessionSentinel: Reset your password",
+                "BreachTitan: Reset your password",
                 password_reset_body(user, raw_token),
             )
         except (EmailConfigurationError, EmailDeliveryError) as exc:

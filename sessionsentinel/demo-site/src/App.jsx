@@ -92,12 +92,12 @@ function Login() {
   const resetMode = mode === 'reset'
   return <div className="auth-layout">
     <aside className="auth-aside">
-      <Link className="auth-brand" to="/"><span className="brand-mark">S</span><span>Session<span>Sentinel</span></span></Link>
+      <Link className="auth-brand" to="/"><span className="brand-mark">BT</span><span>BreachTitan</span></Link>
       <div className="auth-aside-copy"><span className="auth-kicker"><i /> PERSONAL SECURITY CENTER</span><h2>Know what’s happening with your account.</h2><p>Review sign-ins, keep an eye on active sessions, and respond quickly when activity feels unfamiliar.</p><div className="auth-proof"><span className="proof-icon">✓</span><span><strong>Security activity, made clear</strong><small>Stay informed. Stay in control.</small></span></div></div>
-      <span className="auth-aside-foot">SESSION SENTINEL <i /> ACCOUNT PROTECTION</span>
+      <span className="auth-aside-foot">BREACHTITAN <i /> ACCOUNT PROTECTION</span>
     </aside>
     <main className="auth-main"><section className="auth-card">
-      <div className="auth-mobile-brand"><span className="brand-mark">S</span> SessionSentinel</div>
+      <div className="auth-mobile-brand"><span className="brand-mark">BT</span> BreachTitan</div>
       <p className="eyebrow">{resetMode ? 'ACCOUNT RECOVERY' : mode === 'signup' ? 'GET STARTED' : 'SECURE SIGN IN'}</p>
       <h1>{resetMode ? 'Reset your password' : mode === 'signup' ? 'Create your account' : 'Welcome back'}</h1>
       <p className="auth-description">{signupPending ? 'Your account is waiting for email verification.' : resetMode ? resetToken ? 'Choose a new password using your secure reset link.' : resetRequested ? 'Check your email for a secure password reset link.' : 'We’ll email you a secure link to reset your password.' : mode === 'signup' ? 'Create an account to keep your sign-in activity in one place.' : 'Sign in to review your account and security activity.'}</p>
@@ -109,7 +109,7 @@ function Login() {
         {!resetMode || resetToken || !resetRequested ? <button className="auth-submit" type="submit">{resetMode ? resetToken ? 'Save new password' : 'Send reset link' : mode === 'signup' ? 'Create account' : 'Sign in securely'}<span>→</span></button> : null}
       </form>
       {error && <p className={`auth-message ${error.startsWith('Account created') || error.startsWith('Password reset') || error.startsWith('If the account exists') ? 'success' : 'error'}`} role="alert">{error}</p>}
-      {!resetMode && mode === 'login' && <><div className="auth-divider"><span>DEMO ACCESS</span></div><div className="demo-credentials"><strong>Seeded user account</strong><span>ali@test.com <i>·</i> Test@12345</span></div><p className="auth-switch">New to SessionSentinel? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('signup') }}>Create an account</button></p></>}
+      {!resetMode && mode === 'login' && <p className="auth-switch">New to BreachTitan? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('signup') }}>Create an account</button></p>}
       {!resetMode && mode === 'signup' && <p className="auth-switch">Already have an account? <button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login') }}>Sign in</button></p>}
       {resetMode && <p className="auth-switch"><button type="button" className="auth-text-button" onClick={() => { setError(''); setMode('login'); setResetRequested(false); navigate('/') }}>← Back to sign in</button></p>}
       </>}
@@ -141,7 +141,7 @@ function EmailAction({ action }) {
           : 'The sign-in session has been cancelled.')
     }).catch((reason) => setMessage(reason.message))
   }, [action, navigate])
-  return <main className="auth-page"><section className="auth-card auth-action-card"><span className="brand-mark">S</span><p className="eyebrow">SECURITY CHECK</p><h1>SessionSentinel</h1><p className="muted">{message}</p><Link className="button" to="/">Continue to sign in <span>→</span></Link></section></main>
+  return <main className="auth-page"><section className="auth-card auth-action-card"><span className="brand-mark">BT</span><p className="eyebrow">SECURITY CHECK</p><h1>BreachTitan</h1><p className="muted">{message}</p><Link className="button" to="/">Continue to sign in <span>→</span></Link></section></main>
 }
 
 function Layout({ children }) {
@@ -152,7 +152,7 @@ function Layout({ children }) {
     navigate('/')
   }
   return <div className="shell">
-    <header className="site-header"><Link className="site-brand" to="/account"><span className="brand-mark">S</span><span>Session<span>Sentinel</span></span></Link><nav className="site-nav" aria-label="Account navigation"><NavLink to="/account">Account</NavLink><NavLink to="/security">My Security</NavLink><button className="link-button" onClick={logout}>Log out</button></nav></header>
+    <header className="site-header"><Link className="site-brand" to="/account"><span className="brand-mark">BT</span><span>BreachTitan</span></Link><nav className="site-nav" aria-label="Account navigation"><NavLink to="/account">Account</NavLink><NavLink to="/security">My Security</NavLink><button className="link-button" onClick={logout}>Log out</button></nav></header>
     {children}
   </div>
 }

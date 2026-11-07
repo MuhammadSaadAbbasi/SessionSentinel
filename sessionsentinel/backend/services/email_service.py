@@ -192,7 +192,7 @@ def retry_notification(db, notification: Notification) -> Notification:
     return notification
 def failed_login_body(user: User, count: int, severity: str) -> str:
     return (
-        "SessionSentinel Security Alert\n\n"
+        "BreachTitan Security Alert\n\n"
         "Event: Repeated failed login attempts\n"
         f"Account: {user.email}\n"
         f"Detected: {utcnow().isoformat()}Z\n"
@@ -204,7 +204,7 @@ def failed_login_body(user: User, count: int, severity: str) -> str:
 
 def critical_login_body(user: User, count: int) -> str:
     return (
-        "SessionSentinel Critical Security Alert\n\n"
+        "BreachTitan Critical Security Alert\n\n"
         "Event: Critical repeated login activity\n"
         f"Account: {user.email}\n"
         f"Detected: {utcnow().isoformat()}Z\n"
@@ -216,7 +216,7 @@ def critical_login_body(user: User, count: int) -> str:
 
 def unusual_location_body(user: User, ip: str | None) -> str:
     return (
-        "SessionSentinel Security Alert\n\n"
+        "BreachTitan Security Alert\n\n"
         "Event: Login from an unusual location\n"
         f"Account: {user.email}\n"
         f"Detected: {utcnow().isoformat()}Z\n"
@@ -239,7 +239,7 @@ def create_verification_request(db, user: User, device_id: str, ip: str | None):
     db.flush()
     link = f"{APP_BASE_URL.rstrip('/')}/verify-device?token={quote(raw_token)}"
     body = (
-        "SessionSentinel Security Verification\n\n"
+        "BreachTitan Security Verification\n\n"
         "Event: New device sign-in verification\n"
         f"Account: {user.email}\n"
         f"Detected: {utcnow().isoformat()}Z\n"
@@ -262,7 +262,7 @@ def create_email_verification_request(db, user: User):
     db.flush()
     link = f"{APP_BASE_URL.rstrip('/')}/verify-email?token={quote(raw_token)}"
     body = (
-        "SessionSentinel Email Verification\n\n"
+        "BreachTitan Email Verification\n\n"
         f"Verify your account using this link (valid for "
         f"{EMAIL_VERIFICATION_TTL_SECONDS // 3600} hours):\n{link}\n\n"
         "If you did not create this account, ignore this message."
@@ -273,7 +273,7 @@ def create_email_verification_request(db, user: User):
 def password_reset_body(user: User, raw_token: str) -> str:
     link = f"{APP_BASE_URL.rstrip('/')}/reset-password?token={quote(raw_token)}"
     return (
-        "SessionSentinel Password Reset\n\n"
+        "BreachTitan Password Reset\n\n"
         f"A password reset was requested for {user.email}.\n\n"
         f"Choose a new password using this link (valid for "
         f"{PASSWORD_RESET_TTL_SECONDS // 60} minutes):\n{link}\n\n"
@@ -293,7 +293,7 @@ def create_session_cancellation_request(db, user: User, session: UserSession):
     db.flush()
     link = f"{APP_BASE_URL.rstrip('/')}/cancel-session?token={quote(raw_token)}"
     body = (
-        "SessionSentinel Session Security\n\n"
+        "BreachTitan Session Security\n\n"
         f"A new sign-in session was created for {user.email}.\n\n"
         f"If this was not you, cancel it here (link valid for "
         f"{SESSION_CANCELLATION_TTL_SECONDS // 60} minutes):\n{link}\n\n"

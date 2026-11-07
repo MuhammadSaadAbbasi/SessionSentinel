@@ -1,4 +1,4 @@
-# SessionSentinel: Tech Stack Guide (kaun sa part, kaun si language)
+# BreachTitan: Tech Stack Guide (kaun sa part, kaun si language)
 
 ## 1. Ek nazar mein
 

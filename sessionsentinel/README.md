@@ -39,7 +39,7 @@ embeds this value at build time; changing it without a new deployment has no eff
 1. Create a Mailjet API key and set `MAILJET_API_KEY` to its public API key.
 2. Set `MAILJET_API_SECRET` to its private API secret.
 3. Set `MAILJET_FROM_EMAIL` to an active, validated Mailjet sender and
-   `MAILJET_FROM_NAME=SessionSentinel`.
+   `MAILJET_FROM_NAME=BreachTitan`.
 4. Set `ADMIN_EMAIL` to the administrator inbox.
 
 Mailjet requires the sender address to be validated. Gmail, Outlook, and other free-email

@@ -1,8 +1,8 @@
-# SessionSentinel Presentation
+# BreachTitan Presentation
 
 ## 1. Problem
 
-SessionSentinel detects suspicious login activity on our own demo website,
+BreachTitan detects suspicious login activity on our own demo website,
 explains why it is suspicious, and applies server-side corrective actions.
 
 The system demonstrates:
