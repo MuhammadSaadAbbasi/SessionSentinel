@@ -241,6 +241,12 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
             Incident.explanation.like("R3:%"),
             Incident.status == "open",
         ).order_by(Incident.id.desc()).first()
+        if incident is None:
+            incident = db.query(Incident).filter(
+                Incident.user_id == user.id,
+                Incident.explanation.like("R1:%"),
+                Incident.status == "open",
+            ).order_by(Incident.id.desc()).first()
         if incident:
             incident.severity = "high"
             incident.explanation += (
@@ -274,6 +280,12 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
             Incident.explanation.like("R3:%"),
             Incident.status == "open",
         ).order_by(Incident.id.desc()).first()
+        if r4_active and incident is None:
+            incident = db.query(Incident).filter(
+                Incident.user_id == user.id,
+                Incident.explanation.like("R1:%"),
+                Incident.status == "open",
+            ).order_by(Incident.id.desc()).first()
         notification_kind = "new_device_verification"
         notification_subject = "BreachTitan: Verify New Device Sign-In"
         notification_body = verification_body
