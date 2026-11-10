@@ -1,5 +1,5 @@
 from database import SessionLocal
-from models import Event, Incident, User
+from models import Event, Incident, Notification, User
 from tests.conftest import auth
 
 
@@ -63,6 +63,37 @@ def test_success_after_r1_is_recorded(client, login):
         Incident.user_id.is_not(None),
         Incident.explanation.like("R1:%"),
     ).count() >= 1
+    db.close()
+
+
+def test_r4_sends_high_priority_user_notification(client, login):
+    assert login(email="sara@test.com", device="sara-known").status_code == 200
+    for _ in range(5):
+        assert client.post(
+            "/login",
+            json={
+                "email": "sara@test.com",
+                "password": "DefinitelyWrong-For-R4!",
+                "device_id": "sara-known",
+            },
+        ).status_code == 401
+
+    response = login(email="sara@test.com", device="sara-new")
+    assert response.status_code == 200
+    assert response.json()["requires_reauthentication"] is True
+
+    db = SessionLocal()
+    incident = db.query(Incident).filter(
+        Incident.user_id.is_not(None),
+        Incident.explanation.like("%R4:%"),
+        Incident.severity == "high",
+    ).one()
+    notification = db.query(Notification).filter(
+        Notification.incident_id == incident.id,
+        Notification.kind == "r4_user_alert",
+    ).one()
+    assert notification.subject == "BreachTitan High-Priority Security Alert"
+    assert "Repeated failed logins" in notification.body
     db.close()
 
 

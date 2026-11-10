@@ -54,6 +54,7 @@ from services.detection import (
     record_shared_ip_incident,
     record_r1_incident,
 )
+from services.response import revoke_all_sessions
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -225,53 +226,116 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     r1_active, unfamiliar_device, unusual_location = inspect_success(
         db, user, body.device_id, ip
     )
-    if unfamiliar_device:
-        verification, _, verification_body = create_verification_request(
-            db, user, body.device_id, ip
-        )
-        create_notification(
-            db,
-            recipient=user.email,
-            user_id=user.id,
-            kind="new_device_verification",
-            subject="BreachTitan: Verify New Device Sign-In",
-            body=verification_body,
-            idempotency_key=f"new-device:{user.id}:{body.device_id}:{verification.id}",
-        )
-    elif unusual_location:
-        incident = db.query(Incident).filter(
-            Incident.user_id == user.id,
-            Incident.explanation == "R3: successful login from an unusual location",
-            Incident.status == "open",
-        ).order_by(Incident.id.desc()).first()
-        if incident is not None:
-            create_notification(
-                db,
-                recipient=user.email,
-                user_id=user.id,
-                incident_id=incident.id,
-                kind="unusual_location",
-                subject="BreachTitan: Review Unusual Login Location",
-                body=unusual_location_body(user, ip),
-                idempotency_key=f"unusual-location:{user.id}:{incident.id}",
-            )
     db.add(Event(user_id=user.id, email_tried=email, device_id=body.device_id, ip=ip, type="login_ok"))
     db.flush()
     if db.query(TrustedDevice).filter(
         TrustedDevice.user_id == user.id
     ).count() == 0:
         db.add(TrustedDevice(user_id=user.id, device_id=body.device_id))
-    if r1_active and (unfamiliar_device or unusual_location):
+    r4_active = r1_active and r2_triggered(db, user.id) and (
+        unfamiliar_device or unusual_location
+    )
+    if r4_active:
         incident = db.query(Incident).filter(
             Incident.user_id == user.id,
-            Incident.explanation.like("R1:%"),
+            Incident.explanation.like("R3:%"),
             Incident.status == "open",
         ).order_by(Incident.id.desc()).first()
         if incident:
-            incident.severity = "critical" if incident.severity == "critical" else "high"
+            incident.severity = "high"
             incident.explanation += (
-                "\nR4: R1 sequence followed by a successful login from an "
-                "unfamiliar device or location"
+                "\nR4: repeated failed logins followed by a successful login from "
+                "an unfamiliar device or location"
+            )
+            append(db, "r4_correlated", "system", f"user_id={user.id};incident_id={incident.id}")
+            recipient = admin_recipient()
+            if recipient:
+                create_notification(
+                    db,
+                    recipient=recipient,
+                    incident_id=incident.id,
+                    kind="r4_admin_alert",
+                    subject="BreachTitan Admin Alert: Correlated Login Activity",
+                    body=(
+                        "BreachTitan Admin Alert\n\n"
+                        f"Account: {user.email}\n"
+                        "Repeated failed logins were followed by a successful sign-in "
+                        "from an unfamiliar device or location.\n"
+                        f"Incident: {incident.id}"
+                    ),
+                    idempotency_key=f"r4-admin:{incident.id}",
+                )
+    if unfamiliar_device:
+        verification, _, verification_body = create_verification_request(
+            db, user, body.device_id, ip
+        )
+        incident = db.query(Incident).filter(
+            Incident.user_id == user.id,
+            Incident.explanation.like("R3:%"),
+            Incident.status == "open",
+        ).order_by(Incident.id.desc()).first()
+        notification_kind = "new_device_verification"
+        notification_subject = "BreachTitan: Verify New Device Sign-In"
+        notification_body = verification_body
+        notification_key = f"new-device:{user.id}:{body.device_id}:{verification.id}"
+        if r4_active and incident is not None:
+            notification_kind = "r4_user_alert"
+            notification_subject = "BreachTitan High-Priority Security Alert"
+            notification_body = (
+                "BreachTitan High-Priority Security Alert\n\n"
+                f"Account: {user.email}\n"
+                "Repeated failed logins were followed by a successful sign-in "
+                "from an unfamiliar device.\n\n"
+                "The session is being held. If this was you, verify the device "
+                "using the link below. If this was not you, do not verify it; "
+                "use the session security link to protect your account and reset "
+                "your password.\n\n"
+                f"{verification_body}"
+            )
+            notification_key = f"r4-user:{incident.id}"
+        create_notification(
+            db,
+            recipient=user.email,
+            user_id=user.id,
+            incident_id=incident.id if incident else None,
+            kind=notification_kind,
+            subject=notification_subject,
+            body=notification_body,
+            idempotency_key=notification_key,
+        )
+    elif unusual_location:
+        incident = db.query(Incident).filter(
+            Incident.user_id == user.id,
+            Incident.explanation.like("R3:%"),
+            Incident.status == "open",
+        ).order_by(Incident.id.desc()).first()
+        if incident is not None:
+            if r4_active:
+                body = (
+                    "BreachTitan High-Priority Security Alert\n\n"
+                    f"Account: {user.email}\n"
+                    "Repeated failed logins were followed by a successful sign-in "
+                    "from an unusual location.\n\n"
+                    "The session is being held. If this was not you, use the "
+                    "session security link to protect your account and reset your password."
+                )
+                kind = "r4_user_alert"
+                subject = "BreachTitan High-Priority Security Alert"
+                key = f"r4-user:{incident.id}"
+            else:
+                body = unusual_location_body(user, ip)
+                kind = "unusual_location"
+                subject = "BreachTitan: Review Unusual Login Location"
+                key = f"unusual-location:{user.id}:{incident.id}"
+            create_notification(
+                db,
+                recipient=user.email,
+                user_id=user.id,
+                incident_id=incident.id,
+                kind=kind,
+                subject=subject,
+                body=body,
+                idempotency_key=key,
             )
     if r1_active and r2_triggered(db, user.id):
         incident, _ = record_r1_incident(db, user)
@@ -399,10 +463,44 @@ def cancel_session(body: TokenRequest, db: Session = Depends(get_db)):
     if session is None or session.user_id != request.user_id:
         raise HTTPException(status_code=400, detail="Session cancellation request is invalid")
     request.used_at = utcnow()
-    session.revoked = True
-    append(db, "session_cancelled_by_email", "user", f"session_id={session.id}")
+    user = db.get(User, request.user_id)
+    if user is None:
+        raise HTTPException(status_code=400, detail="Session cancellation account is invalid")
+    user.password_reset_required = True
+    revoked_count = revoke_all_sessions(db, user.id, user.email)
+    incident = Incident(
+        user_id=user.id,
+        severity="high",
+        status="open",
+        explanation=f"R5: unauthorized activity reported through session link for event {session.id}",
+    )
+    db.add(incident)
+    db.flush()
+    append(
+        db,
+        "unauthorized_activity_reported",
+        user.email,
+        f"event=session_cancellation:{session.id};revoked_sessions={revoked_count}",
+    )
+    create_notification(
+        db,
+        recipient=user.email,
+        user_id=user.id,
+        incident_id=incident.id,
+        kind="unauthorized_activity",
+        subject="BreachTitan: Account Protection Activated",
+        body=(
+            "BreachTitan Account Protection\n\n"
+            "Event: Sign-in reported as unauthorized through the security link\n"
+            f"Account: {user.email}\n"
+            f"Detected: {utcnow().isoformat()}Z\n\n"
+            "All active sessions were revoked and a password reset is required. "
+            "Use the password reset link to restore access."
+        ),
+        idempotency_key=f"unauthorized-session:{request.id}",
+    )
     db.commit()
-    return {"status": "cancelled"}
+    return {"status": "protected", "revoked_sessions": revoked_count}
 
 
 @router.post("/logout")

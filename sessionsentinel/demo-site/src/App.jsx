@@ -134,11 +134,12 @@ function EmailAction({ action }) {
         navigate(`/?verified=1&email=${encodeURIComponent(body.email || '')}`, { replace: true })
         return
       }
-      setMessage(action === '/verify-device'
-        ? 'Device verified. You can now sign in.'
-        : action === '/verify-device'
-          ? 'Device verified. You can now sign in.'
-          : 'The sign-in session has been cancelled.')
+      if (action === '/cancel-session') {
+        localStorage.removeItem('token')
+        setMessage('Your account has been protected. All active sessions were signed out and a password reset is required.')
+        return
+      }
+      setMessage('Device verified. You can now sign in.')
     }).catch((reason) => setMessage(reason.message))
   }, [action, navigate])
   return <main className="auth-page"><section className="auth-card auth-action-card"><span className="brand-mark">BT</span><p className="eyebrow">SECURITY CHECK</p><h1>BreachTitan</h1><p className="muted">{message}</p><Link className="button" to="/">Continue to sign in <span>→</span></Link></section></main>
@@ -146,6 +147,17 @@ function EmailAction({ action }) {
 
 function Layout({ children }) {
   const navigate = useNavigate()
+  useEffect(() => {
+    function handleSessionRevoked(event) {
+      if (event.key === 'token' && event.newValue === null) {
+        navigate('/', { replace: true })
+      }
+    }
+
+    window.addEventListener('storage', handleSessionRevoked)
+    return () => window.removeEventListener('storage', handleSessionRevoked)
+  }, [navigate])
+
   async function logout() {
     await api('/logout', { method: 'POST' })
     localStorage.removeItem('token')

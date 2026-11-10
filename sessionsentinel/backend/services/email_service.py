@@ -295,9 +295,10 @@ def create_session_cancellation_request(db, user: User, session: UserSession):
     body = (
         "BreachTitan Session Security\n\n"
         f"A new sign-in session was created for {user.email}.\n\n"
-        f"If this was not you, cancel it here (link valid for "
+        f"If this was not you, protect your account here (link valid for "
         f"{SESSION_CANCELLATION_TTL_SECONDS // 60} minutes):\n{link}\n\n"
-        "This link cancels only this sign-in session."
+        "This link reports the sign-in as unauthorized, revokes all active sessions, "
+        "and requires a password reset."
     )
     return request, body
 
