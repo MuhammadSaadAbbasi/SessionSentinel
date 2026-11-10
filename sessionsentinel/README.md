@@ -84,7 +84,8 @@ revokes existing session tokens.
 - R1 escalation and account locks are audited, and R1 plus a successful new-device or unusual-location
   login becomes a high-risk held session.
 - Security actions append entries to the SHA-256 hash-chained `audit_log` table.
-- Unauthorized reports print a visible console alert through the local notifier adapter.
+- Security emails are delivered through Mailjet and recorded in `notifications`; failed
+  deliveries remain available for administrator retry at `/admin/notifications/{id}/retry`.
 - Admins can list the audit log at `/audit` and verify its integrity at `/audit/verify`.
 - Verification returns `{"status":"valid"}` or identifies the first broken entry.
 

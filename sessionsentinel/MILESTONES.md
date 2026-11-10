@@ -167,7 +167,7 @@ release-readiness checkpoint added for this project:
 CIA mapping: revoke test (Confidentiality), hash chain verify (Integrity), throttle plus sara ka normal login (Availability).
 
 ## 5. Agar peeche reh jao (kya kaato)
-Is order mein chhoro: (1) asli email, console print kaafi, (2) R3 naya device, (3) device-level detection, (4) Dashboard ke charts. **Kabhi mat chhoro:** login, R1 plus 429, incident plus explanation, session revoke, audit hash chain plus verify.
+Is order mein chhoro: (1) email provider configuration, (2) R3 naya device, (3) device-level detection, (4) Dashboard ke charts. **Kabhi mat chhoro:** login, R1 plus 429, incident plus explanation, session revoke, audit hash chain plus verify.
 
 ## 6. AI se code likhwane ki guide (vibe coders ke liye)
 

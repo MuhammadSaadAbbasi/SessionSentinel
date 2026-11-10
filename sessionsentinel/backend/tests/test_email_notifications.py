@@ -7,7 +7,7 @@ import services.email_service as email_service
 REAL_SEND_EMAIL = email_service.send_email
 from config import R1_CRITICAL_FAILS, R1_HIGH_FAILS
 from database import SessionLocal
-from models import Event, TrustedDevice, User, VerificationRequest, utcnow
+from models import Event, Notification, TrustedDevice, User, VerificationRequest, utcnow
 from services.detection import record_r1_incident
 from services.detection import ip_retry_after
 from services.email_service import (
@@ -155,6 +155,39 @@ def test_threshold_notifications_are_targeted_and_idempotent(monkeypatch):
     )
     db.commit()
     assert sent == [user.email, user.email]
+    db.close()
+
+
+def test_fifth_failed_login_sends_and_persists_high_alert(client, monkeypatch):
+    sent = []
+    monkeypatch.setattr(
+        email_service,
+        "send_email",
+        lambda recipient, subject, body: sent.append((recipient, subject)),
+    )
+
+    for attempt in range(R1_HIGH_FAILS):
+        response = client.post(
+            "/login",
+            json={
+                "email": "ali@test.com",
+                "password": "DefinitelyWrong-01!",
+                "device_id": f"failed-device-{attempt}",
+            },
+        )
+        assert response.status_code == 401
+
+    db = SessionLocal()
+    notification = db.query(Notification).filter(
+        Notification.kind == "r1_high",
+        Notification.recipient == "ali@test.com",
+    ).one()
+    assert notification.status == "sent"
+    assert notification.attempts == 1
+    assert sent == [(
+        "ali@test.com",
+        "BreachTitan Security Alert: Repeated Failed Login Attempts",
+    )]
     db.close()
 
 

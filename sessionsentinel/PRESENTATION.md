@@ -63,7 +63,8 @@ and audit verification are performed by the backend.
 
 ## 6. Limitations
 
-- The notifier does not send real email; it prints a local alert.
+- Security emails use the Mailjet API. Delivery status, attempts, and failures are stored
+  in the `notifications` table, and administrators can retry failed notifications.
 - The investigation agent is intentionally rule-based and not an AI system.
 - The demo uses SQLite and seeded test accounts.
 - Password reset and extra verification are outside the current scope.
