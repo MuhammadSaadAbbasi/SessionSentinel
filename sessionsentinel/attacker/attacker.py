@@ -27,9 +27,9 @@ DEMO_EMAILS = ["ali@test.com", "sara@test.com"]
 DEVICE_ID = "sessionsentinel-attacker-lab"
 WRONG_PASSWORDS = [
     "DefinitelyWrong-01!", "DefinitelyWrong-02!", "DefinitelyWrong-03!",
-    "DefinitelyWrong-04!", "Test@12345", "DefinitelyWrong-06!",
+    "DefinitelyWrong-04!", "DefinitelyWrong-06!", "Test@12345",
     "DefinitelyWrong-07!", "DefinitelyWrong-08!", "DefinitelyWrong-09!",
-    "DefinitelyWrong-10!",
+    "DefinitelyWrong-10!"
 ]
 
 BG = "#09090b"
